@@ -50,6 +50,10 @@ with open(conf_file_path) as f:
 data_folder_path = os.path.normpath(yaml_conf["io"]["path_to_data_folder"])
 
 raw_data_folder_name = yaml_conf["io"]["raw_data_folder_name"]
+
+#gjb 2021, add method for grabbing and processing h5 data from one folder
+raw_data_proc_type = yaml_conf["io"].get("raw_data_proc_type")
+
 heartloc_data_folder_name = yaml_conf["io"]["heartloc_data_folder_name"]
 
 curated_data_folder_name = yaml_conf["io"]["curated_data_folder_name"]
@@ -113,8 +117,9 @@ if not os.path.exists(model_output_nrrd_dir_path): os.mkdir(model_output_nrrd_di
 # run the localization pipeline
 print "\n--- STEP 1 - HEART LOCALIZATION ---\n"
 
-# data preparation 
-export_data.export_data(raw_data_dir_path = raw_data_dir_path,
+# data preparation
+if raw_data_proc_type is None:
+    export_data.export_data(raw_data_dir_path = raw_data_dir_path,
                         curated_dir_path = curated_dir_path,
                         qc_curated_dir_path = qc_curated_dir_path,
                         curated_size = curated_size,
@@ -122,7 +127,17 @@ export_data.export_data(raw_data_dir_path = raw_data_dir_path,
                         num_cores = num_cores,
                         export_png = export_png,
                         has_manual_seg = has_manual_seg)
-
+elif raw_data_proc_type == "h5_one_dir":
+    export_data.export_data_h5(raw_data_dir_path=raw_data_dir_path,
+                            curated_dir_path=curated_dir_path,
+                            qc_curated_dir_path=qc_curated_dir_path,
+                            curated_size=curated_size,
+                            curated_spacing=curated_spacing,
+                            num_cores=num_cores,
+                            export_png=export_png,
+                            has_manual_seg=has_manual_seg)
+else:
+    raise Exception("Unkown raw data process type: {}".format(raw_data_proc_type))
 # data downsampling
 downsample_data.downsample_data(curated_dir_path = curated_dir_path,
                                 resampled_dir_path = resampled_dir_path,

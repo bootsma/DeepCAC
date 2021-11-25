@@ -24,6 +24,8 @@
 
 import os
 import numpy as np
+import h5py
+import csv
 import SimpleITK as sitk
 import matplotlib.pyplot as plt
 
@@ -294,7 +296,7 @@ def plot_sitk_msk(patient_id, img_sitk, msk_sitk, qc_curated_dir_path):
 
 # Process a single scan on one CPU core
 def run_core(curated_dir_path, qc_curated_dir_path, export_png,
-             has_manual_seg, curated_size, curated_spacing, patients_data, patient_id):
+             has_manual_seg, curated_size, curated_spacing, patients_data, patient_id, h5_data = False):
 
     
   """
@@ -311,18 +313,33 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
     patients_data       - required : (pointer to) dictionary storing, for each patient, a list
                                      containing the path to the CT and segmask NRRD files
     patient_id          - required : patient ID, used to index "patients_data"
+    h5_data             - optional : False will process the original way, true will process data assuming h5 and
+                            a new type of dict inside patients_data
 
   """
 
   print 'Processing patient', patient_id
-  
+
   # init SITK reader and writer, load the CT volume in a SITK object
-  nrrd_reader = sitk.ImageFileReader()
+  img_stk = None
   nrrd_writer = sitk.ImageFileWriter()
-  nrrd_reader.SetFileName(patients_data[patient_id][0])
-  img_sitk = nrrd_reader.Execute()
-  
-  
+  if h5_data:
+    patient_data = patients_data[patient_id]
+    h5py_data= h5py.File(patient_data['img'])
+    img_sitk = sitk.GetImageFromArray(np.flip(np.transpose(h5py_data['img'][0], (2,0,1)),axis=0))
+    img_size = img_sitk.GetSize()
+    img_sitk.SetSpacing([patient_data['recon_diameter']/img_size[0], patient_data['recon_diameter'] / img_size[1],
+                        patient_data['slice_thickness']] )
+
+
+  else:
+    nrrd_reader = sitk.ImageFileReader()
+
+    nrrd_reader.SetFileName(patients_data[patient_id][0])
+    img_sitk = nrrd_reader.Execute()
+    print("Size: {}".format(img_sitk.GetSize()))
+
+
   # take care of the size/spacing difference - resample SITK image, expand/crop
   img_sitk, curated_size = resample_sitk(img_sitk = img_sitk, 
                                          method = sitk.sitkLinear,
@@ -385,6 +402,88 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 
 ## ----------------------------------------
 ## ----------------------------------------
+def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
+                   curated_size, curated_spacing, num_cores, export_png, has_manual_seg, patient_csv_file = None):
+    """
+    Similar to export_data except we excpect to find a csv file that contains a list of the h5 images [DicomFileName],
+     along with the slice thickness [SliceThickness] and reconstruction diameter [ReconstructionDiameter]
+     You can either pass in just he directory containing one csv file and all the image data or the directory and the
+     specific csv file you would like processed.
+
+    @params:
+
+      raw_data_dir_path   - required : input data directory (must contain a folder for each patient)
+      curated_dir_path    - required : output directory for the NRRD file(s) (CT and segmask)
+      qc_curated_dir_path - required : output directory for the png file
+      curated_size        - required : list containing the desired size, in voxels, of the output data
+      curated_spacing     - required : list containing the desired spacing, in mm, of the output data
+      num_cores           - required : number of cores to use for the multiprocessing
+      export_png          - required : whether to export the quality control png or not
+      has_manual_seg      - required : whether a manual segmentation for the volume is available or not
+      csv_file            - if you have more than  one csv_file in the folder (e.g. breaking up data into groups)
+
+    """
+
+    patients_data = dict()
+    if patient_csv_file is None:
+        patient_csv_file = glob(raw_data_dir_path +'/*.csv')
+        if len(patient_csv_file) != 1:
+            if len(patient_csv_file) <1:
+                raise Exception("The data folder [{}] does not contain any csv file with patient info".format(
+                    raw_data_dir_path))
+            else:
+                raise Exception("The data folder [{}] does not contains many csv files with patient info, you must pass"
+                                " in the csv_file you want to process".format(raw_data_dir_path))
+        patient_csv_file=patient_csv_file[0]
+    else:
+        patient_csv_file = os.path.join(raw_data_dir_path, patient_csv_file)
+
+    # read the csv to get each patient image info to process
+    with open(patient_csv_file) as csvfile:
+        reader = csv.reader(csvfile)
+        header = next(reader)
+        img_file_index = header.index('DicomFileName')
+        slice_thickness_index = header.index('SliceThickness')
+        recon_diameter_index = header.index('ReconstructionDiameter')
+        for row in reader:
+            img_filename = row[img_file_index]
+            #use the image name as the patient_id
+            patient_id = img_filename[0:img_filename.find('.h5')]
+            patients_data[patient_id] = {'img':os.path.join(raw_data_dir_path, img_filename),
+                                        'slice_thickness':float(row[slice_thickness_index]),
+                                        'recon_diameter':float(row[recon_diameter_index])}
+
+
+    print
+    "Data preprocessing:"
+    print
+    'Found', len(patients_data), 'patients under "%s"' % (raw_data_dir_path)
+
+    # if single core, then run core as one would normally do with a function
+    if num_cores == 1:
+        for patient_id in patients_data:
+            run_core(curated_dir_path=curated_dir_path,
+                     qc_curated_dir_path=qc_curated_dir_path,
+                     export_png=export_png,
+                     has_manual_seg=has_manual_seg,
+                     curated_size=curated_size,
+                     curated_spacing=curated_spacing,
+                     patients_data=patients_data,
+                     patient_id=patient_id,
+                     h5_data = True)
+
+    # else, run the preprocessing in parallel
+    elif num_cores > 0:
+        pool = Pool(processes=num_cores)
+        pool.map(partial(run_core, curated_dir_path, qc_curated_dir_path, export_png, has_manual_seg, curated_size,
+                         curated_spacing,
+                         patients_data), patients_data.keys())
+        pool.close()
+        pool.join()
+    else:
+        print
+        'Wrong number of CPU cores specified in the config file.'
+
 
 def export_data(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
                 curated_size, curated_spacing, num_cores, export_png, has_manual_seg):
@@ -440,3 +539,40 @@ def export_data(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
     pool.join()
   else:
     print 'Wrong number of CPU cores specified in the config file.'
+
+
+if __name__ == "__main__":
+
+
+    test_original = True
+    test_dir = "D:/gjbWork/CodeRepo/CAC-Scoring/TestData"
+    if test_original:
+        #Test the original way
+        print("Testing Original data Export")
+        raw_path = os.path.join( test_dir, "og_raw")
+        curated_path = os.path.join(test_dir,"og_curated")
+        curated_qc_path = os.path.join(test_dir,"og_curated_qc")
+        curated_size = [512, 512, 0]
+        curated_spacing = [0.68, 0.68, 2.5]
+        num_cores=1
+        export_png = True
+        has_manual_seg = False
+
+        export_data(raw_path, curated_path, curated_qc_path,
+                    curated_size, curated_spacing, num_cores, export_png, has_manual_seg)
+
+    test_new = True
+    test_dir = "D:/gjbWork/CodeRepo/CAC-Scoring/TestData"
+    if test_new:
+        print("Testing New H5 with csv Export")
+        raw_path = os.path.join(test_dir,"new_raw")
+        curated_path = os.path.join(test_dir,"new_curated")
+        curated_qc_path = os.path.join(test_dir,"new_curated_qc")
+        curated_size = [512, 512, 0]
+        curated_spacing = [0.68, 0.68, 2.5]
+        num_cores = 1
+        export_png = True
+        has_manual_seg = False
+
+        export_data_h5(raw_path, curated_path, curated_qc_path,
+                    curated_size, curated_spacing, num_cores, export_png, has_manual_seg)
