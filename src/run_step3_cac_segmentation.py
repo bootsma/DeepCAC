@@ -71,6 +71,10 @@ num_cores = yaml_conf["processing"]["num_cores"]
 use_inferred_masks = yaml_conf["processing"]["use_inferred_masks"]
 patch_size = yaml_conf["processing"]["patch_size"]
 
+# number of gpus to use, 4 should be used for training
+# if number_of_gpus = 1 weights can't be saved from multi_gpu_model
+number_of_gpus = yaml_conf["processing"].get("number_of_gpus", 4)
+
 # model config
 weights_file_name = yaml_conf["model"]["weights_file_name"]
 
@@ -154,4 +158,5 @@ run_inference.run_inference(data_dir = cropped_dir_name,
                             weights_file_name = weights_file_name,
                             output_dir = model_output_dir_path,
                             export_cac_slices_png = export_cac_slices_png, 
-                            has_manual_seg = has_manual_seg)
+                            has_manual_seg = has_manual_seg,
+                            mgp = number_of_gpus)
