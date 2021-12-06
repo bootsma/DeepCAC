@@ -139,7 +139,8 @@ elif raw_data_proc_type == "h5_one_dir":
                             curated_spacing=curated_spacing,
                             num_cores=num_cores,
                             export_png=export_png,
-                            has_manual_seg=has_manual_seg)
+                            has_manual_seg=has_manual_seg,
+                            patient_csv_file=raw_data_patient_csv_file)
 else:
     raise Exception("Unkown raw data process type: {}".format(raw_data_proc_type))
 # data downsampling
