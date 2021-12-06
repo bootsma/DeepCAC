@@ -60,10 +60,18 @@ def save_png(patientID, output_dir_png, img, msk, pred):
 
 
 def test(model, dataDir, output_dir_npy, output_dir_png, pkl_file,
-         test_file, weights_file, mgpu, has_manual_seg, png):
+         test_file, weights_file, mgpu, has_manual_seg, png,
+         output_single_gpu_model = True):
     
   # Get the weight file with the highest weight
   model.load_weights(weights_file)
+
+  if output_single_gpu_model and mgpu > 1:
+    old_model = model.layers[-2]
+    tmp_weights_file = weights_file[:weights_file.rfind('.')] + '_single_gpu.h5'
+    print('Saving single gpu model weights as {}'.format(tmp_weights_file))
+    old_model.save_weights(tmp_weights_file)
+
 
   testFileHdf5 = tables.open_file(os.path.join(dataDir, test_file), "r")
   pklData = pickle.load(open(os.path.join(dataDir, pkl_file), 'rb'))
@@ -123,8 +131,7 @@ def run_inference(model_output_dir_path, model_input_dir_path, model_weights_dir
                   crop_size, export_png, model_down_steps, extended, has_manual_seg, weights_file_name,
                   mgpu = 4):
 
-  print "\nDeep Learning model inference using 4xGPUs:" 
-  
+  print("\nDeep Learning model inference using {}xGPUS:".format(mgpu))
 
 
   output_dir_npy = os.path.join(model_output_dir_path, 'npy')
