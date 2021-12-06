@@ -322,10 +322,11 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 
   # init SITK reader and writer, load the CT volume in a SITK object
   img_stk = None
+  nrrd_reader = sitk.ImageFileReader()
   nrrd_writer = sitk.ImageFileWriter()
   if h5_data:
     patient_data = patients_data[patient_id]
-    h5py_data= h5py.File(patient_data['img'])
+    h5py_data= h5py.File(patient_data['img'],'r')
     img_sitk = sitk.GetImageFromArray(np.flip(np.transpose(h5py_data['img'][0], (2,0,1)),axis=0))
     img_size = img_sitk.GetSize()
     img_sitk.SetSpacing([patient_data['recon_diameter']/img_size[0], patient_data['recon_diameter'] / img_size[1],
@@ -333,7 +334,7 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 
 
   else:
-    nrrd_reader = sitk.ImageFileReader()
+
 
     nrrd_reader.SetFileName(patients_data[patient_id][0])
     img_sitk = nrrd_reader.Execute()
