@@ -76,6 +76,10 @@ training_size = yaml_conf["processing"]["training_size"]
 final_size = yaml_conf["processing"]["final_size"]
 final_spacing = yaml_conf["processing"]["final_spacing"]
 
+# number of gpus to use, 4 should be used for training
+# if number_of_gpus = 1 weights can't be saved from multi_gpu_model
+number_of_gpus = yaml_conf["processing"].get("number_of_gpus", 4)
+
 # model config
 weights_file_name = yaml_conf["model"]["weights_file_name"]
 down_steps = yaml_conf["model"]["down_steps"]
@@ -177,7 +181,8 @@ run_inference.run_inference(model_weights_dir_path = model_weights_dir_path,
                             export_png = export_png,
                             final_size = final_size,
                             training_size = training_size,
-                            down_steps = down_steps)
+                            down_steps = down_steps,
+                            mgpu = number_of_gpus)
 
 #
 upsample_results.upsample_results(cur_input = curated_dir_path,

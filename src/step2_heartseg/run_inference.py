@@ -57,11 +57,13 @@ def save_png(patientID, output_dir_png, img, msk, pred):
 ## ----------------------------------------
 
 def run_inference(model_weights_dir_path, data_dir, output_dir,
-                  weights_file_name, export_png, final_size, training_size, down_steps):
+                  weights_file_name, export_png, final_size, training_size, down_steps,
+                  mgpu = 4):
 
-  print "\nDeep Learning model inference using 4xGPUs:" 
+  print( "Deep Learning model inference using {}xGPUs".format(mgpu))
+
   
-  mgpu = 4
+
 
   output_dir_npy = os.path.join(output_dir, 'npy')
   output_dir_png = os.path.join(output_dir, 'png')

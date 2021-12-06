@@ -47,6 +47,9 @@ io:
 ## ----------------------------------------
 
 processing:
+
+  number_of_gpus: 2
+
   # whether or not the segmentation masks are available
   has_manual_seg: true
   
