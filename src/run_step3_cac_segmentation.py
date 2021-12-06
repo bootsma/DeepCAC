@@ -159,4 +159,4 @@ run_inference.run_inference(data_dir = cropped_dir_name,
                             output_dir = model_output_dir_path,
                             export_cac_slices_png = export_cac_slices_png, 
                             has_manual_seg = has_manual_seg,
-                            mgp = number_of_gpus)
+                            mgpu = number_of_gpus)
