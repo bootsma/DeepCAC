@@ -46,6 +46,10 @@ io:
 ## ----------------------------------------
 
 processing:
+
+  #number of gpus to use, 4 is paper recommended for training
+  number_of_gpus: 1
+
   # whether or not the segmentation masks are available
   has_manual_seg: false
   

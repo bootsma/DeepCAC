@@ -118,13 +118,14 @@ def test(model, dataDir, output_dir_npy, output_dir_png, pkl_file,
         patientID = testDataRaw[patientIndex][0]
         save_png(patientID, output_dir_png, imgsTrue[patientIndex], msksTrue[patientIndex], msksPred[j, :, :, :, 0])
 
-
+# for training it is recommended to use 4 gpus to allow for large enough memory for batch size
 def run_inference(model_output_dir_path, model_input_dir_path, model_weights_dir_path,
-                  crop_size, export_png, model_down_steps, extended, has_manual_seg, weights_file_name):
+                  crop_size, export_png, model_down_steps, extended, has_manual_seg, weights_file_name,
+                  mgpu = 4):
 
   print "\nDeep Learning model inference using 4xGPUs:" 
   
-  mgpu = 4
+
 
   output_dir_npy = os.path.join(model_output_dir_path, 'npy')
   output_dir_png = os.path.join(model_output_dir_path, 'png')

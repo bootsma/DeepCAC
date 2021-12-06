@@ -79,10 +79,15 @@ curated_spacing = yaml_conf["processing"]["curated_spacing"]
 model_input_size = yaml_conf["processing"]["model_input_size"]
 model_input_spacing = yaml_conf["processing"]["model_input_spacing"]
 
+# number of gpus to use, 4 should be used for training
+number_of_gpus = yaml_conf["processing"].get("number_of_gpus", 4)
+
 # model config
 weights_file_name = yaml_conf["model"]["weights_file_name"]
 down_steps = yaml_conf["model"]["down_steps"]
 extended = yaml_conf["model"]["extended"]
+
+
 
 ## ----------------------------------------
 
@@ -170,7 +175,9 @@ run_inference.run_inference(model_output_dir_path = model_output_dir_path,
                             model_down_steps = down_steps,
                             extended = extended,
                             has_manual_seg = has_manual_seg,
-                            weights_file_name = weights_file_name)
+                            weights_file_name = weights_file_name,
+                            mgpu = number_of_gpus)
+
 
 # post-processing (upsample)
 upsample_results.upsample_results(curated_dir_path = curated_dir_path,
