@@ -44,9 +44,12 @@ io:
 ## ----------------------------------------
 
 processing:
+  number_of_gpus: 2
+
   # whether or not the segmentation masks are available
-  has_manual_seg: true
-    
+  has_manual_seg: false
+
+
   # whether or not png images for quality control should be exported
   export_png: true
   
