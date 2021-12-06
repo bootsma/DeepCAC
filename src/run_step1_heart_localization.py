@@ -51,8 +51,12 @@ data_folder_path = os.path.normpath(yaml_conf["io"]["path_to_data_folder"])
 
 raw_data_folder_name = yaml_conf["io"]["raw_data_folder_name"]
 
-#gjb 2021, add method for grabbing and processing h5 data from one folder
+# GJB 2021, add method for grabbing and processing h5 data from one folder
+# for h5 all data is in one folder and only data in a csv file is process
+# you can either explicitly list csv file or put only one csv file in the data
+# folder
 raw_data_proc_type = yaml_conf["io"].get("raw_data_proc_type")
+raw_data_patient_csv_file = yaml_conf["io"].get("patient_csv_file")
 
 heartloc_data_folder_name = yaml_conf["io"]["heartloc_data_folder_name"]
 
