@@ -15,6 +15,8 @@
 """
 
 import os
+import time
+
 import yaml
 import argparse
 import matplotlib      
@@ -137,11 +139,13 @@ if not os.path.exists(model_output_dir_path): os.mkdir(model_output_dir_path)
 # run the CAC segmentation pipeline
 print "\n--- STEP 3 - CAC SEGMENTATION ---\n"
 
+start = time.time()
 # 
 dilate_segmasks.dilate_segmasks(pred_dir = step2_inferred_dir_path,
                                 output_dir = dilated_dir_path,
                                 num_cores = num_cores)
-
+dilate_time = time.time()
+print("Dilate Task Time: {}", dilate_time-start)
 #
 crop_data.crop_data(raw_input = curated_dir_path,
                     prd_input = dilated_dir_path,
@@ -152,6 +156,8 @@ crop_data.crop_data(raw_input = curated_dir_path,
                     has_manual_seg = has_manual_seg,
                     export_png = export_png)
 
+crop_time = time.time()
+print("Crop Task Time: {}", crop_time - dilate_time)
 #
 run_inference.run_inference(data_dir = cropped_dir_name,
                             model_weights_dir_path = model_weights_dir_path,
@@ -160,3 +166,5 @@ run_inference.run_inference(data_dir = cropped_dir_name,
                             export_cac_slices_png = export_cac_slices_png, 
                             has_manual_seg = has_manual_seg,
                             mgpu = number_of_gpus)
+infer_time = time.time()
+print("Inference Task Time: {}", infer_time - crop_time)
