@@ -61,7 +61,7 @@ processing:
   export_png: true
   
   # number of cores to be used for the pre-processing
-  num_cores: 1
+  num_cores: 16
   
   # wheter the input data should be split or not (see input_data_prep.get_files() for more details)
   create_test_set: "All"

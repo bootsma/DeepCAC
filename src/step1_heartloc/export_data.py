@@ -446,6 +446,7 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
         img_file_index = header.index('DicomFileName')
         slice_thickness_index = header.index('SliceThickness')
         recon_diameter_index = header.index('ReconstructionDiameter')
+
         for row in reader:
             img_filename = row[img_file_index]
             #use the image name as the patient_id

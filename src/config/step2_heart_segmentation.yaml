@@ -60,7 +60,7 @@ processing:
   export_png: true
   
   # number of CPU cores to be used
-  num_cores: 1
+  num_cores: 16
   
   # whether or not to use the masks inferred from the pipeline (step 1) for the heart segmentation
   # if set to "false", uses the training masks (if provided)
