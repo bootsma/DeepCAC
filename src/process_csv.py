@@ -61,9 +61,10 @@ if __name__ == '__main__':
         for i in range(Ngroups):
             curr_file = output_filename + "_{}_n{}_{}".format(i, N, '_h5.csv')
             if i == Ngroups-1:
-                write_patient_csv(curr_file, unique_p[(i - 1)*N:], header)
+                write_patient_csv(curr_file, unique_p[i*N:], header)
             else:
-                write_patient_csv(curr_file, unique_p[(i-1)*N:i*N], header)
+
+                write_patient_csv(curr_file, unique_p[i*N:(i+1)*N], header)
 
 
     else:
