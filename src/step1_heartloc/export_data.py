@@ -479,7 +479,7 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
         pool = Pool(processes=num_cores)
         pool.map(partial(run_core, curated_dir_path, qc_curated_dir_path, export_png, has_manual_seg, curated_size,
                          curated_spacing,
-                         patients_data, patient_id, True), patients_data.keys())
+                         patients_data, h5_data=True), patients_data.keys())
         pool.close()
         pool.join()
     else:
