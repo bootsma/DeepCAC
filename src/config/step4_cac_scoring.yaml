@@ -35,4 +35,4 @@ processing:
   has_manual_seg: false
       
   # number of CPU cores to be used
-  num_cores: 16
+  num_cores: 4

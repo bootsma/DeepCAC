@@ -57,7 +57,7 @@ processing:
   export_cac_slices_png: false
   
   # number of CPU cores to be used
-  num_cores: 16
+  num_cores: 4
   
   # whether or not to use the masks inferred from the pipeline (step 2) for the CAC segmentation
   # if set to "false", uses the training masks (if provided)

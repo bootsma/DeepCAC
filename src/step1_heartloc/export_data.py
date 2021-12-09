@@ -404,7 +404,8 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 ## ----------------------------------------
 ## ----------------------------------------
 def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
-                   curated_size, curated_spacing, num_cores, export_png, has_manual_seg, patient_csv_file = None):
+                   curated_size, curated_spacing, num_cores, export_png, has_manual_seg, patient_csv_file = None,
+                   use_imagename_as_id=False):
     """
     Similar to export_data except we excpect to find a csv file that contains a list of the h5 images [DicomFileName],
      along with the slice thickness [SliceThickness] and reconstruction diameter [ReconstructionDiameter]
@@ -446,11 +447,16 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
         img_file_index = header.index('DicomFileName')
         slice_thickness_index = header.index('SliceThickness')
         recon_diameter_index = header.index('ReconstructionDiameter')
+        patient_id_index =header.index('PatientID')
 
         for row in reader:
             img_filename = row[img_file_index]
             #use the image name as the patient_id
-            patient_id = img_filename[0:img_filename.find('.h5')]
+            if use_imagename_as_id:
+                patient_id = img_filename[0:img_filename.find('.h5')]
+            else:
+                patient_id = row[patient_id_index]
+
             patients_data[patient_id] = {'img':os.path.join(raw_data_dir_path, img_filename),
                                         'slice_thickness':float(row[slice_thickness_index]),
                                         'recon_diameter':float(row[recon_diameter_index])}
