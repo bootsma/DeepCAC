@@ -20,6 +20,8 @@ from functools import partial
 
 
 def run_core(pred_dir, output_dir, dil_z_value, patient):
+
+  print('Processing of patient data: {}'.format(patient))
   nrrd_reader = sitk.ImageFileReader()
   nrrd_writer = sitk.ImageFileWriter()
 
@@ -80,7 +82,7 @@ def dilate_segmasks(pred_dir, output_dir, num_cores, dil_z_value = 11):
 
   patients = glob(pred_dir + '/*.nrrd')
   print 'Found', len(patients), 'patients under "%s"'%(pred_dir)
-
+  print('Running on {} cores'.format(num_cores))
   pool = Pool(processes=num_cores)
   pool.map(partial(run_core, pred_dir, output_dir, dil_z_value), patients)
   pool.close()
