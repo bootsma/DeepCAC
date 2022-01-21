@@ -1,0 +1,27 @@
+#!/bin/bash
+#SBATCH --time=48:00:00
+#SBATCH --mem=16GB
+#SBATCH --job-name=RUN_STEP2
+#SBATCH --partition=gpu
+#SBATCH -c 5
+#SBATCH -A mcintoshgroup_gpu
+#SBATCH --output=%x-%j-%a.out
+#SBATCH --error=%x-%j-%a.err
+#SBATCH --gres=gpu:2
+#SBATCH --mail-user=$USER@rmp.uhn.ca
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+
+nvidia-smi
+
+date
+echo "Setting up environment"
+source /cluster/home/bootsma/.bashrc
+conda activate cac27
+
+echo "Running script"
+pwd
+cd /cluster/home/bootsma/CAC-Scoring/DeepCAC/src
+python ./run_step1_heart_segmentation.py
+date
+

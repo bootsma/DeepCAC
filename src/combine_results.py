@@ -1,12 +1,15 @@
 import argparse
 import csv
-
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
 
 def run_parser():
     parser = argparse.ArgumentParser(description="combine_results.py\n Takes CAC scoring csv results output by DeepCAC "
                                                  "(deep_cac_csv) and combines them with CAC scores from another source (source_cac)")
     parser.add_argument('deep_cac_csv', type=str, help="csv filename output from DeepCAC")
     parser.add_argument('source_cac_csv', type=str, help="csv filename of additional CAC scores")
+    parser.add_argument('-p','--plot',action='store_true')
     return parser.parse_args()
 
 def read_source_data(csv_filename):
@@ -51,32 +54,36 @@ def read_deep_cac(csv_filename):
     return data
 
 
-def combine_csv_data(output_filename, deepcac_data, source_header, source_data, source_add=true):
-    with open(output_filename, 'w') as csv_file:
+def combine_csv_data(output_filename, deepcac_data, source_header, source_data, source_add=True):
+    with open(output_filename, 'wb') as csv_file:
         writer = csv.writer(csv_file)
         new_header = source_header
         new_header.append('DeepCAC CAC_pred')
         new_header.append('DeepCAC Class_pred')
         writer.writerow(new_header)
         source_id_index = new_header.index('RESEARCH_ID')
-        if source_add:
-            for data in source_data:
 
-                id = data[source_id_index]
-                pred_vals = deepcac_data.get(id)
-                if pred_vals is None:
-                    print('No DeepCAC predictions for ID:{}'.format(id))
-                    data.append('')
-                    data.append('')
-                else:
-                    data.append(pred_vals[0])
-                    data.append(pred_vals[1])
+        new_data =[]
+        for data in source_data:
+            id = data[source_id_index]
+            pred_vals = deepcac_data.get(id)
+            exist = False
+            if pred_vals is None:
+                print('No DeepCAC predictions for ID:{}'.format(id))
 
-                writer.writerow(data)
+                data.append('')
+                data.append('')
             else:
-                source_ids = [ row[source_id_index] for row in source_data]
-                for key, item in deepcac_data.items():
-                    curr_index = source_ids.index(key)
+                exist = True
+                data.append(pred_vals[0])
+                data.append(pred_vals[1])
+            if source_add:
+                writer.writerow(data)
+                new_data.append(data)
+            elif not source_add and exist:
+                writer.writerow(data)
+                new_data.append(data)
+        return new_data, new_header
 
 
 
@@ -90,7 +97,41 @@ if __name__ == "__main__":
     source_header, source_data = read_source_data(args.source_cac_csv)
 
     output_filename = args.source_cac_csv[:args.source_cac_csv.rfind('.')] + '_deepcac.csv'
-    combine_csv_data(output_filename, data, source_header, source_data)
+    combined_data, combined_header = combine_csv_data(output_filename, data, source_header, source_data, False)
+    if args.plot:
+        truth_cac_index = combined_header.index('Chest CT CAC Visual score (0 absent, 1 mild, 2 moderate, 3 severe)')
+        deep_cac_index = combined_header.index('DeepCAC Class_pred')
+
+        diff_cac =[float(x[deep_cac_index])- float(x[truth_cac_index]) for x in combined_data]
+        bin_list = [-3.5,-2.5,-1.5,-0.5,0.5,1.5,2.5,3.5]
+        plt.hist(diff_cac,bins = bin_list,density =True)
+
+        plt.gca().yaxis.set_major_formatter(PercentFormatter(1))
+        plt.ylabel('Percent of Patients (N Patients = {})'.format(len(combined_data)))
+        plt.xlabel('[Chest CT CAC Visual Score] -[Deep CAC Class]')
+        plt.title('CAC Class Error Distribution')
+        plt.show()
+
+        truth_cac_index = combined_header.index('Cardiact CT CAC score')
+        deep_cac_index = combined_header.index('DeepCAC CAC_pred')
+        truth_cac_score = [float(x[truth_cac_index]) for x in combined_data]
+        pred_cac_score = [float(x[deep_cac_index]) for x in combined_data]
+
+        plt.plot(truth_cac_score, pred_cac_score,'o')
+
+        m,b=np.polyfit(truth_cac_score,pred_cac_score,1)
+        plt.plot(truth_cac_score, m*np.array(truth_cac_score)+b)
+        maxval = max([max(truth_cac_score ), max(pred_cac_score)])
+        plt.xlim([0, maxval])
+        plt.ylim([0, maxval])
+        plt.xlabel('Cardiac CT CAC Score')
+        plt.ylabel('DeepCAC Predicted CAC Score')
+        corr = np.corrcoef(truth_cac_score, pred_cac_score)[0,1]
+        plt.text(500,3000, 'Fit: y={:.2f}x+{:.2f}\nCorrelation(x,y)={:.2f}'.format(m,b,corr))
+        plt.show()
+        print('Correlation: {}'.format(corr))
+
+
 
 
 

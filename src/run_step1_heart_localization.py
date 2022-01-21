@@ -32,7 +32,7 @@ parser = argparse.ArgumentParser(description = 'Run pipeline step 1 - heart loca
 parser.add_argument('--conf',
                     required = False,
                     help = 'Specify the YAML configuration file containing the run details. ' \
-                            + 'Defaults to "heart_localization.yaml"',
+                            + 'Defaults to "step1_heart_localization.yaml"',
                     choices = conf_file_list,
                     default = "step1_heart_localization.yaml",
                    )
@@ -40,6 +40,7 @@ parser.add_argument('--conf',
 
 args = parser.parse_args()
 
+print('Running Config File: {}'.format(args.conf))
 conf_file_path = os.path.join(base_conf_file_path, args.conf)
 
 with open(conf_file_path) as f:
