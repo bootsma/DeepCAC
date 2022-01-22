@@ -102,7 +102,7 @@ def write_data_file(data_dir, data_file, file_list, cube_length, input_spacing, 
     fill_mask_holes - required :
 
   """
-  
+  id_str_size = 80
   nrrd_reader = sitk.ImageFileReader()
 
   # path where the *.h5 file storing ... will be saved
@@ -118,7 +118,7 @@ def write_data_file(data_dir, data_file, file_list, cube_length, input_spacing, 
   # init earrays to properly write on HDF5 files using PyTables  
   pat_id_hdf5 = hdf5_file.create_earray(where = hdf5_file.root, 
                                         name = 'ID', 
-                                        atom = tables.StringAtom(itemsize = 65), 
+                                        atom = tables.StringAtom(itemsize =id_str_size),
                                         shape = (0,))
   
   img_hdf5 = hdf5_file.create_earray(where = hdf5_file.root,
@@ -135,9 +135,12 @@ def write_data_file(data_dir, data_file, file_list, cube_length, input_spacing, 
   for file in file_list:
     img_file = file[0]
     msk_file = file[1]
-    
+
+
     pat_id = os.path.basename(img_file).replace('_img.nrrd', '')
     print 'Processing patient', pat_id
+    if len(pat_id) > id_str_size:
+      raise Exception('Patient id: {} is to long, max length {}'.format(pat_id, id_str_size))
 
     # read SITK image 
     nrrd_reader.SetFileName(img_file)
@@ -165,7 +168,7 @@ def write_data_file(data_dir, data_file, file_list, cube_length, input_spacing, 
     img_cropped = ((np.clip(img_cropped, -1024.0, 3071.0)) - 1023.5) / 2047.5
     
     # store ID as a node in the HDF5 vector
-    pat_id_hdf5.append(np.array([pat_id], dtype='S65'))
+    pat_id_hdf5.append(np.array([pat_id], dtype='S80'))
     
     # store image as a node in the HDF5 vector
     img_hdf5.append(img_cropped[np.newaxis, ...])

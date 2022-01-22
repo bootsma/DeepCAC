@@ -405,7 +405,7 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 ## ----------------------------------------
 def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
                    curated_size, curated_spacing, num_cores, export_png, has_manual_seg, patient_csv_file = None,
-                   use_imagename_as_id=False):
+                   include_imagename_in_id=True):
     """
     Similar to export_data except we excpect to find a csv file that contains a list of the h5 images [DicomFileName],
      along with the slice thickness [SliceThickness] and reconstruction diameter [ReconstructionDiameter]
@@ -452,8 +452,8 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
         for row in reader:
             img_filename = row[img_file_index]
             #use the image name as the patient_id
-            if use_imagename_as_id:
-                patient_id = img_filename[0:img_filename.find('.h5')]
+            if include_imagename_in_id:
+                patient_id = row[patient_id_index] + '.' + img_filename[0:img_filename.find('.h5')]
             else:
                 patient_id = row[patient_id_index]
 
