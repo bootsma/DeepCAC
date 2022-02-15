@@ -25,7 +25,7 @@ def read_source_data(csv_filename):
 
 
 
-def read_deep_cac(csv_filename):
+def read_deep_cac(csv_filename ):
     """
 
     Args:
@@ -34,7 +34,7 @@ def read_deep_cac(csv_filename):
     Returns:
         Dictionary with PatientID as key and element a tuple of (CAC Score, CAC class)
     """
-
+    max_images_per_patient = 0
     cac_string = 'CAC_pred'
     cac_class_string = 'Class_pred'
     id_string = 'PatientID'
@@ -45,23 +45,45 @@ def read_deep_cac(csv_filename):
         id_index = header.index(id_string)
         cac_index = header.index(cac_string)
         class_index = header.index(cac_class_string)
+
         for row in reader:
-            if data.get(row[id_index]) is None:
-                data[row[id_index]] = (row[cac_index], row[class_index])
+
+            id = row[id_index]
+            last_dot = id.rfind('.')
+            patient_id = id[:last_dot]
+            image_id = id[last_dot + 1:]
+            print('adding {}'.format(patient_id))
+            element = data.get(patient_id)
+            if element is None:
+                data[patient_id] = [image_id, row[cac_index], row[class_index]]
+
+                if max_images_per_patient == 0:
+                    max_images_per_patient=1
             else:
-                raise Exception('Duplicates of ID {} exist in csv {}.'.format(row[id_index], csv_filename))
+                element.append(image_id)
+                element.append(row[cac_index])
+                element.append(row[class_index])
+                nimages = int(len(element)/3)
+                if nimages > max_images_per_patient:
+                    max_images_per_patient = nimages
+                #raise Exception('Duplicates of ID {} exist in csv {}.'.format(row[id_index], csv_filename))
 
-    return data
+    return data, max_images_per_patient
 
 
-def combine_csv_data(output_filename, deepcac_data, source_header, source_data, source_add=True):
+def combine_csv_data(output_filename, deepcac_data, source_header, source_data, max_images_per_patient, source_add=True):
+
     with open(output_filename, 'wb') as csv_file:
         writer = csv.writer(csv_file)
         new_header = source_header
-        new_header.append('DeepCAC CAC_pred')
-        new_header.append('DeepCAC Class_pred')
+        for i in range(max_images_per_patient):
+            new_header.append('ImageId')
+            new_header.append('DeepCAC CAC_pred')
+            new_header.append('DeepCAC Class_pred')
         writer.writerow(new_header)
         source_id_index = new_header.index('RESEARCH_ID')
+
+
 
         new_data =[]
         for data in source_data:
@@ -75,8 +97,9 @@ def combine_csv_data(output_filename, deepcac_data, source_header, source_data, 
                 data.append('')
             else:
                 exist = True
-                data.append(pred_vals[0])
-                data.append(pred_vals[1])
+                for val in pred_vals:
+                    data.append(val)
+
             if source_add:
                 writer.writerow(data)
                 new_data.append(data)
@@ -88,16 +111,16 @@ def combine_csv_data(output_filename, deepcac_data, source_header, source_data, 
 
 
 
-
-
 if __name__ == "__main__":
 
     args = run_parser()
-    data = read_deep_cac(args.deep_cac_csv)
+    data, max_images_per_patient = read_deep_cac(args.deep_cac_csv)
+    print(data)
+    print('MAX: {}'.format(max_images_per_patient))
     source_header, source_data = read_source_data(args.source_cac_csv)
 
     output_filename = args.source_cac_csv[:args.source_cac_csv.rfind('.')] + '_deepcac.csv'
-    combined_data, combined_header = combine_csv_data(output_filename, data, source_header, source_data, False)
+    combined_data, combined_header = combine_csv_data(output_filename, data, source_header, source_data, max_images_per_patient,False)
     if args.plot:
         truth_cac_index = combined_header.index('Chest CT CAC Visual score (0 absent, 1 mild, 2 moderate, 3 severe)')
         deep_cac_index = combined_header.index('DeepCAC Class_pred')

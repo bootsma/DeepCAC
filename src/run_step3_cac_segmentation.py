@@ -41,7 +41,7 @@ parser.add_argument('--conf',
 
 
 args = parser.parse_args()
-
+print('Running Config File: {}'.format(args.conf))
 conf_file_path = os.path.join(base_conf_file_path, args.conf)
 
 with open(conf_file_path) as f:

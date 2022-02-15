@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --time=48:00:00
-#SBATCH --mem=16GB
+#SBATCH --mem=32GB
 #SBATCH --job-name=RUN_STEP1
 #SBATCH --partition=gpu
 #SBATCH -c 5
@@ -8,7 +8,7 @@
 #SBATCH --output=%x-%j-%a.out
 #SBATCH --error=%x-%j-%a.err
 #SBATCH --gres=gpu:2
-#SBATCH --mail-user=$USER@rmp.uhn.ca
+#SBATCH --mail-user=gregory.bootsma@rmp.uhn.ca
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 
@@ -22,6 +22,16 @@ conda activate cac27
 echo "Running script"
 pwd
 cd /cluster/home/bootsma/CAC-Scoring/DeepCAC/src
-python ./run_step1_heart_localization.py $1
+
+if [ -z "$1" ]
+then
+  echo "No argument"
+  python ./run_step1_heart_localization.py
+else
+  echo "Argument 1: $1"
+  python ./run_step1_heart_localization.py --conf $1
+fi
+
+
 date
 

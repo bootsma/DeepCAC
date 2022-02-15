@@ -70,6 +70,8 @@ def cropSitk(patient_id, patient, imagesRawSitk, inter_size):
                oldSize[1]-inter_size[1]-newSizeDown[1],
                oldSize[2]-inter_size[2]-newSizeDown[2]]
 
+  print("Patient {}\n NewSizeDown: {}\n NewSizUp: {}\n".format(patient_id, newSizeDown, newSizeUp))
+
   cropFilter = sitk.CropImageFilter()
   cropFilter.SetUpperBoundaryCropSize(newSizeUp)
   cropFilter.SetLowerBoundaryCropSize(newSizeDown)
@@ -177,11 +179,17 @@ def runCore(patients, output_dir, diff_dict, final_size, final_spacing, inter_si
   patient = patients[patient_id]
   imgFile = os.path.join(output_dir, patient_id + '_img.nrrd')
   imagesRawSitk = {}
-
-  imagesRawSitk = getPatientFiles(patient, imagesRawSitk)
-  imagesRawSitk, expSize, sizeDifExpand, NSDexpt, NSUexp = expandSitk(imagesRawSitk, inter_size)
-  imagesRawSitk, cropSize, sizeDifCrop, NSD_crop, NSUcrop = cropSitk(patient_id, patient, imagesRawSitk, inter_size)
-  imagesRawSitk = downsampleSitk(imagesRawSitk, final_spacing, final_size)
+  try:
+    imagesRawSitk = getPatientFiles(patient, imagesRawSitk)
+    imagesRawSitk, expSize, sizeDifExpand, NSDexpt, NSUexp = expandSitk(imagesRawSitk, inter_size)
+    imagesRawSitk, cropSize, sizeDifCrop, NSD_crop, NSUcrop = cropSitk(patient_id, patient, imagesRawSitk, inter_size)
+    imagesRawSitk = downsampleSitk(imagesRawSitk, final_spacing, final_size)
+  except Exception as e:
+    msg = "An exception occurred in crop processing {} : Exception [{}], Type [{}]".format(patient_id, e, type(e))
+    print("Skipping patient: {}".format(patient_id))
+    print("\t{}".format(msg))
+    sys.stdout.flush()
+    return
 
   if not check_images(patient_id, imagesRawSitk, final_size, final_spacing):
     return

@@ -19,6 +19,16 @@ conda activate cac27
 echo "Running script"
 pwd
 cd /cluster/home/bootsma/CAC-Scoring/DeepCAC/src
-python ./run_step4_cac_scoring.py
+
+
+if [ -z "$1" ]
+then
+  echo "No argument"
+  python ./run_step4_cac_scoring.py
+else
+  echo "Argument 1: $1"
+  python ./run_step4_cac_scoring.py --conf $1
+fi
+
 date
 

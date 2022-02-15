@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --time=48:00:00
-#SBATCH --mem=16GB
+#SBATCH --mem=32GB
 #SBATCH --job-name=RUN_STEP3
 #SBATCH --partition=gpu
 #SBATCH -c 2
@@ -19,9 +19,19 @@ echo "Setting up environment"
 source /cluster/home/bootsma/.bashrc
 conda activate cac27
 
-echo "Running script"
+echo "Running script python ./run_step3_cac_segmentation.py $1 "
 pwd
 cd /cluster/home/bootsma/CAC-Scoring/DeepCAC/src
-python ./run_step3_cac_segmentation.py
+
+if [ -z "$1" ]
+then
+  echo "No argument"
+  python ./run_step3_cac_segmentation.py
+else
+  echo "Argument 1: $1"
+  python ./run_step3_cac_segmentation.py --conf $1
+fi
+
+
 date
 
