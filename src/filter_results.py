@@ -11,7 +11,7 @@ def run_parser():
                                                  "Take input (input_cac_csv) and removes data listed in (remove_cac)")
     parser.add_argument('input_cac_csv', type=str, help="csv filename output from DeepCAC")
     parser.add_argument('remove_cac_csv', type=str, help="csv filename of data to remove")
-    parser.add_argument('-f','--filter_key', nargs='?', const='PatientID',type=str, help="header key to filter on, default: PatientID")
+    parser.add_argument('-f','--filter_key', nargs='?', const='PatientID',defualt = 'PatientID', type=str, help="header key to filter on, default: PatientID")
     return parser.parse_args()
 
 
