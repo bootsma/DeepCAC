@@ -17,11 +17,14 @@ import os
 import multiprocessing
 from multiprocessing import Manager
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
+
 import SimpleITK as sitk
 from glob import glob
 from functools import partial
-
 
 def save_png(patient_id, img_RAW_croped_cube, msk_RAW_croped_cube, png_output):
   size = img_RAW_croped_cube.shape

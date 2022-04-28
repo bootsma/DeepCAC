@@ -1,10 +1,7 @@
 import argparse
 import sys
 import csv
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.ticker import PercentFormatter
-from combine_results import read_deep_cac, read_source_data
+
 
 def run_parser():
     parser = argparse.ArgumentParser(description="filter_results.py\n Removes rows from data with matching PatientID "
@@ -17,6 +14,18 @@ def run_parser():
 
 "MS14735WT.R.CT_6e400182-ffb3f844-e29f9224-2d7ed0fb-864802bf"
 "MS14735WT.R.CT_6e400182-ffb3f844-e29f9224-2d7ed0fb-864802bf"
+
+def read_source_data(csv_filename):
+
+    with open(csv_filename) as csv_file:
+        reader = csv.reader(csv_file)
+        header = next(reader)
+        data = []
+        for row in reader:
+            data.append(row)
+
+        return header, data
+
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 import argparse
 import csv
+import os
 import sys
 from math import ceil
 
@@ -7,6 +8,7 @@ from math import ceil
 
 def read_and_filter_patients( csv_filename, debug = False):
     with open(csv_filename, 'r') as csv_file:
+        print( 'Reading ' , csv_filename)
         reader = csv.reader(csv_file)
         header = next(reader)
         prev_row= None
@@ -71,9 +73,14 @@ if __name__ == '__main__':
 
     if args.type_split and args.split:
         raise Exception("Only one type of data splitting currently supported")
-
+    print('... ', os.getcwd())
     input_filename = args.input_csv
-    header,unique_p,skipped_patients = read_and_filter_patients(input_filename)
+    try:
+        header,unique_p,skipped_patients = read_and_filter_patients(input_filename)
+    except Exception as e:
+        print('File open error: {}, Exception: {}'.format(input_filename, e))
+        raise e
+
 
     #if len(sys.argv) == 2:
     output_filename = input_filename[:input_filename.rfind('.')] + '_h5.csv'

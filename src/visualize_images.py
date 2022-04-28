@@ -1,11 +1,15 @@
 import argparse
 import csv
 import shutil
+import sys
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
 
+import SimpleITK as sitk
 
 def run_parser():
     parser = argparse.ArgumentParser(description="visualize_images.py\n Takes CAC scoring csv results output by "
@@ -30,15 +34,21 @@ def read_source_data(csv_filename):
 
         return header, data
 
-def plot_prediction(base_dir, id, img, cac_score=-1, deepcac_score=-1):
+def plot_prediction(base_dir, id, img, cac_score=-1, deepcac_score=-1, slice_thickness = '?', show_fig = False):
+    if id != '':
+        base_filename = id + '.' + img
+        file_pred = base_filename + '_pred.npy'
+        file_img = base_filename + '_img.npy'
+        file_img3071 = base_filename + '_img_3071.npy'
+        file_orig_resampled = base_filename +'_img.nrrd'
+    else:
+        base_filename = img
+        file_pred = base_filename + '_pred.npy'
+        file_img = base_filename + '_img.npy'
+        file_img3071 = base_filename + '_img_3071.npy'
+        file_orig_resampled = base_filename +'_img.nrrd'
 
-
-
-    base_filename = id + '.' + img
-    file_pred = base_filename + '_pred.npy'
-    file_img = base_filename + '_img.npy'
-    file_img3071 = base_filename + '_img_3071.npy'
-
+    resampled_dir = os.path.join(base_dir, 'step1_heartloc','resampled')
 
     model_dir = os.path.join(base_dir, 'step3_cacseg', 'model_output','npy')
     cropped_dir = os.path.join(base_dir, 'step3_cacseg', 'cropped')
@@ -47,7 +57,6 @@ def plot_prediction(base_dir, id, img, cac_score=-1, deepcac_score=-1):
     outdir = os.path.join(base_dir,'step4_cac_score', 'visuals')
     if not os.path.exists(outdir):
         os.mkdir(outdir)
-
 
     try:
 
@@ -60,6 +69,11 @@ def plot_prediction(base_dir, id, img, cac_score=-1, deepcac_score=-1):
         filepath = os.path.join(cropped_dir, file_img3071)
         img3071 = np.load(filepath)
 
+        filepath = os.path.join(resampled_dir, file_orig_resampled)
+        nrrd_reader = sitk.ImageFileReader()
+        nrrd_reader.SetFileName(filepath)
+        img_resampled = nrrd_reader.Execute()
+        img_resampled = sitk.GetArrayFromImage(img_resampled)
     except Exception as e:
         print('Could not load files, Exception: {}'.format(e))
         return outdir
@@ -73,8 +87,6 @@ def plot_prediction(base_dir, id, img, cac_score=-1, deepcac_score=-1):
     prd_mask = np.copy(prd)
     prd_mask[prd_mask < mask_thresh] = 0
     prd_mask[prd_mask > 0] = 1
-
-
 
 
     max_axis0 = np.sum(np.sum(prd_mask, axis=2), axis=1)
@@ -111,7 +123,7 @@ def plot_prediction(base_dir, id, img, cac_score=-1, deepcac_score=-1):
     """
 
     diff_score = float(deepcac_score) - float(cac_score)
-    plt.suptitle('CAC:{}, Deep-CAC:{}, Diff:{}'.format(cac_score,deepcac_score, diff_score))
+    plt.suptitle('Slice Thickness: {}, CAC:{}, Deep-CAC:{}, Diff:{}'.format(slice_thickness,cac_score,deepcac_score, diff_score))
     fig.tight_layout()
 
     filename = os.path.join(outdir, base_filename)
@@ -119,8 +131,34 @@ def plot_prediction(base_dir, id, img, cac_score=-1, deepcac_score=-1):
     filename += '_step4_{}_pred.png'.format(abs(diff_score))
 
     plt.savefig(filename)
-    plt.show()
+    if show_fig:
+        plt.show()
     plt.close(fig)
+
+    fig = plt.figure()
+
+
+    plt.hist(img_resampled.flatten(), bins=range(-1024, 1024, 10), density = True)
+    plt.title('Histogram {} - Slice Thickness {}'.format(base_filename, slice_thickness))
+    filename = os.path.join(outdir, base_filename)
+    filename += '_step1_hist_{}_pred.png'.format(abs(diff_score))
+    plt.savefig(filename)
+    if show_fig:
+        plt.show()
+
+    plt.close(fig)
+
+    fig = plt.figure()
+    plt.hist(img_resampled[img_resampled!=0].flatten(), bins=range(-1024, 1024, 16), density = True)
+    plt.title('Histogram {} - Slice Thickness {}'.format(base_filename, slice_thickness))
+    filename = os.path.join(outdir, base_filename)
+    filename += '_step1_hist_ignore_0_{}_pred.png'.format(abs(diff_score))
+    plt.savefig(filename)
+    if show_fig:
+        plt.show()
+
+    plt.close(fig)
+
 
 
     model_dir_s1 = os.path.join(base_dir, 'step1_heartloc', 'model_output', 'png')
@@ -148,6 +186,7 @@ def plot_prediction(base_dir, id, img, cac_score=-1, deepcac_score=-1):
 
     base_filename + '_.png'
 
+    return outdir
 
 
 if __name__ == "__main__":
@@ -169,11 +208,19 @@ if __name__ == "__main__":
     index_cac_score = header.index('Cardiact CT CAC score')
     index_deepcac_score = header.index('DeepCAC CAC_pred')
 
-    for row in data:
+    index_slice_thickness = header.index('SliceThickness')
+    N= len(data)
+
+    for i,row in enumerate(data):
         id = row[index_id] #'AB24600UN.R'
         img = row[index_img] #'CT_426cd8da-11237ca4-b7d2e943-4d51b36b-f1a352b5'
         cac_score =row[index_cac_score]
         deepcac_score= row[index_deepcac_score]
-        outdir=plot_prediction(base_dir, id, img, cac_score, deepcac_score)
+        slice_thickness = row[index_slice_thickness]
+        outdir=plot_prediction(base_dir, id, img, cac_score, deepcac_score, slice_thickness)
 
-    print('Output data in: \n{}'.format(outdir))
+        sys.stdout.write("\r<-- %d%% - Complete -->" % int(100*(i+1)/N))
+        sys.stdout.flush()
+
+
+    print('\nOutput data in: {}'.format(outdir))
