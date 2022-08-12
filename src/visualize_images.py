@@ -8,6 +8,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
+import shutil
 
 import SimpleITK as sitk
 
@@ -21,6 +22,8 @@ def run_parser():
 
     parser.add_argument('result_dir', type=str, help="Main output dir from DeepCAC")
     parser.add_argument('cac_file', type=str, help="CSV File from combine_results.py")
+    parser.add_argument('-c', '--copy_segmentation', action='store_true',help='copy heart segmentation volumes')
+    parser.add_argument('-o', '--output_dirname',type=str,default='visualize', help='Output director name (this directory is created inside step4 directory)')
     return parser.parse_args()
 
 def read_source_data(csv_filename):
@@ -34,27 +37,30 @@ def read_source_data(csv_filename):
 
         return header, data
 
-def plot_prediction(base_dir, id, img, cac_score=-1, deepcac_score=-1, slice_thickness = '?', show_fig = False):
+def plot_prediction(base_dir, id, img, cac_score=-1, deepcac_score=-1, slice_thickness = '?', output_dirname ='visuals', show_fig = False, copy_seg = False):
     if id != '':
         base_filename = id + '.' + img
         file_pred = base_filename + '_pred.npy'
         file_img = base_filename + '_img.npy'
         file_img3071 = base_filename + '_img_3071.npy'
-        file_orig_resampled = base_filename +'_img.nrrd'
+        file_nrrd_img = base_filename + '_img.nrrd'
+        file_nrrd_pred = base_filename + '_pred.nrrd'
     else:
         base_filename = img
         file_pred = base_filename + '_pred.npy'
         file_img = base_filename + '_img.npy'
         file_img3071 = base_filename + '_img_3071.npy'
-        file_orig_resampled = base_filename +'_img.nrrd'
+        file_nrrd_img = base_filename + '_img.nrrd'
+        file_nrrd_pred = base_filename + '_pred.nrrd'
 
     resampled_dir = os.path.join(base_dir, 'step1_heartloc','resampled')
 
     model_dir = os.path.join(base_dir, 'step3_cacseg', 'model_output','npy')
     cropped_dir = os.path.join(base_dir, 'step3_cacseg', 'cropped')
+    dilated_dir = os.path.join(base_dir, 'step3_cacseg', 'dilated')
+    curated_dir = os.path.join(base_dir,'step1_heartloc', 'curated')
 
-
-    outdir = os.path.join(base_dir,'step4_cac_score', 'visuals')
+    outdir = os.path.join(base_dir,'step4_cac_score', output_dirname)
     if not os.path.exists(outdir):
         os.mkdir(outdir)
 
@@ -69,7 +75,7 @@ def plot_prediction(base_dir, id, img, cac_score=-1, deepcac_score=-1, slice_thi
         filepath = os.path.join(cropped_dir, file_img3071)
         img3071 = np.load(filepath)
 
-        filepath = os.path.join(resampled_dir, file_orig_resampled)
+        filepath = os.path.join(resampled_dir, file_nrrd_img)
         nrrd_reader = sitk.ImageFileReader()
         nrrd_reader.SetFileName(filepath)
         img_resampled = nrrd_reader.Execute()
@@ -77,6 +83,16 @@ def plot_prediction(base_dir, id, img, cac_score=-1, deepcac_score=-1, slice_thi
     except Exception as e:
         print('Could not load files, Exception: {}'.format(e))
         return outdir
+
+
+    if copy_seg:
+        out_file = os.path.join(outdir,file_nrrd_pred )
+        in_file = os.path.join(dilated_dir, file_nrrd_pred)
+        shutil.copyfile(in_file, out_file)
+
+        out_file = os.path.join(outdir,file_nrrd_img )
+        in_file = os.path.join(curated_dir, file_nrrd_img)
+        shutil.copyfile(in_file, out_file)
 
 
     #print('p: ', prd.shape)
@@ -214,10 +230,13 @@ if __name__ == "__main__":
     for i,row in enumerate(data):
         id = row[index_id] #'AB24600UN.R'
         img = row[index_img] #'CT_426cd8da-11237ca4-b7d2e943-4d51b36b-f1a352b5'
-        cac_score =row[index_cac_score]
-        deepcac_score= row[index_deepcac_score]
+        cac_score = row[index_cac_score]
+        deepcac_score = row[index_deepcac_score]
         slice_thickness = row[index_slice_thickness]
-        outdir=plot_prediction(base_dir, id, img, cac_score, deepcac_score, slice_thickness)
+
+
+        outdir=plot_prediction(base_dir, id, img, cac_score, deepcac_score, slice_thickness,
+                               output_dirname= args.output_dirname, copy_seg=args.copy_segmentation)
 
         sys.stdout.write("\r<-- %d%% - Complete -->" % int(100*(i+1)/N))
         sys.stdout.flush()
