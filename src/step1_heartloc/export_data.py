@@ -294,6 +294,11 @@ def plot_sitk_msk(patient_id, img_sitk, msk_sitk, qc_curated_dir_path):
 ## ----------------------------------------
 ## ----------------------------------------
 
+ORIGINAL = 0
+ASSIGN_PATIENT_MASK_SPACING = 1
+ASSIGN_MASK_PATIENT_SPACING = 2
+assign_patient_mask_spacing = ASSIGN_PATIENT_MASK_SPACING
+
 # Process a single scan on one CPU core
 def run_core(curated_dir_path, qc_curated_dir_path, export_png,
              has_manual_seg, curated_size, curated_spacing, patients_data, patient_id, h5_data = False):
@@ -319,18 +324,37 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
   """
 
   print 'Processing patient', patient_id
+  patient_data = patients_data[patient_id]
+  nrrd_reader = sitk.ImageFileReader()
+  nrrd_writer = sitk.ImageFileWriter()
+
+  #get the data from the msk first so we can apply this to original data
+  msk_sitk = None
+  msk_spacing = None
+  if has_manual_seg and assign_patient_mask_spacing == ASSIGN_PATIENT_MASK_SPACING:
+
+    file =None
+    if h5_data and patient_data is not None:
+        file = patient_data['mask_file']
+    else:
+        file = patients_data[patient_id][1]
+
+    print('Reading Mask: {}', file)
+
+    nrrd_reader.SetFileName(file)
+    msk_sitk = nrrd_reader.Execute()
+    msk_spacing = msk_sitk.GetSpacing()
+
+
 
   # init SITK reader and writer, load the CT volume in a SITK object
   img_stk = None
-  nrrd_reader = sitk.ImageFileReader()
-  nrrd_writer = sitk.ImageFileWriter()
   if h5_data:
-    patient_data = patients_data[patient_id]
     h5py_data= h5py.File(patient_data['img'],'r',swmr=True)
 
     #img = h5py_data['img'][0,...]
     #img = np.rot90(img, k=1, axes=(0,2)) #rotate 90 around y
-    #img = np.rot90(img, k=-1, axes=(1,2)) #rotate -90 around x
+    #img = np.rot90(img, k=-1, axeconds=(1,2)) #rotate -90 around x
     #img_sitk = sitk.GetImageFromArray(img)
 
     # equivelant
@@ -340,18 +364,26 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
     img_sitk = sitk.GetImageFromArray(np.flip(np.transpose(h5py_data['img'][0], (2, 0, 1)), axis=0))
 
     img_size = img_sitk.GetSize()
-    img_sitk.SetSpacing([patient_data['recon_diameter']/img_size[0], patient_data['recon_diameter'] / img_size[1],
-                        patient_data['slice_thickness']] )
+
+    if msk_spacing is None:
+        img_sitk.SetSpacing([patient_data['recon_diameter']/img_size[0], patient_data['recon_diameter'] / img_size[1],
+                            patient_data['slice_thickness']] )
+    else:
+        print('Original Patient Spacing: {}'.format([patient_data['recon_diameter']/img_size[0], patient_data['recon_diameter'] / img_size[1],
+                            patient_data['slice_thickness']]))
+        print('Used Mask Spacing: {}'.format(msk_spacing))
+        img_sitk.SetSpacing(msk_spacing)
+
+    if msk_spacing is None and assign_patient_mask_spacing == ASSIGN_PATIENT_MASK_SPACING:
+        print('ERROR: no mask spacing data to assign to patient.')
 
 
   else:
-
-
     nrrd_reader.SetFileName(patients_data[patient_id][0])
     img_sitk = nrrd_reader.Execute()
-    print("Size: {}".format(img_sitk.GetSize()))
 
-
+  print("Data Size: {}".format(img_sitk.GetSize()))
+  print('Spacing: {}'.format(img_sitk.GetSpacing()))
   # take care of the size/spacing difference - resample SITK image, expand/crop
   img_sitk, curated_size = resample_sitk(img_sitk = img_sitk, 
                                          method = sitk.sitkLinear,
@@ -378,24 +410,52 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 
   # if the segmask *is* available
   if has_manual_seg:
-    nrrd_reader.SetFileName(patients_data[patient_id][1])
-    msk_sitk = nrrd_reader.Execute()
-    
+
+    if msk_sitk is None:
+        file =None
+        if h5_data and patient_data is not None:
+            file = patient_data['mask_file']
+        else:
+            file = patients_data[patient_id][1]
+
+        print('Reading Mask: {}', file)
+
+        nrrd_reader.SetFileName(file)
+        msk_sitk = nrrd_reader.Execute()
+
+    print("Mask Size: {}".format(msk_sitk.GetSize()))
+    print('Spacing: {}'.format(msk_sitk.GetSpacing()))
+
+    if assign_patient_mask_spacing == ASSIGN_MASK_PATIENT_SPACING:
+        print('Assigning Patient Spacing to Mask: {}'.format(img_sitk.GetSpacing()))
+        msk_sitk.SetSpacing(img_sitk.GetSpacing())
+
     # preprocess the segmasks according to the CT preprocessing parameters
-    msk_sitk, curated_size = resample_sitk(img_sitk = msk_sitk,
-                                           method = sitk.sitkNearestNeighbor,
-                                           curated_spacing = curated_spacing)
-    
-    msk_sitk, msk_exp_up, msk_exp_dn = expand_sitk(img_sitk = msk_sitk,
-                                                   curated_size = curated_size,
-                                                   pad_value = 0,
-                                                   new_size_up = img_exp_up,
-                                                   new_size_down = img_exp_dn)
-    
-    msk_sitk, new_size_up, new_size_down = crop_sitk(img_sitk = msk_sitk,
-                                                     curated_size = curated_size,
-                                                     new_size_up = img_crp_up,
-                                                     new_size_down = img_crp_dn)
+    if has_manual_seg:
+        msk_sitk, curated_size = resample_sitk(img_sitk=msk_sitk,
+                                               method=sitk.sitkLinear,
+                                               curated_spacing=curated_spacing)
+
+        msk_sitk, msk_exp_up, msk_exp_dn = expand_sitk(img_sitk=msk_sitk,
+                                                       curated_size=curated_size,
+                                                       pad_value=0)
+
+        msk_sitk, new_size_up, new_size_down = crop_sitk(img_sitk=msk_sitk, curated_size=curated_size)
+    else:
+        msk_sitk, curated_size = resample_sitk(img_sitk = msk_sitk,
+                                               method = sitk.sitkNearestNeighbor,
+                                               curated_spacing = curated_spacing)
+
+        msk_sitk, msk_exp_up, msk_exp_dn = expand_sitk(img_sitk = msk_sitk,
+                                                       curated_size = curated_size,
+                                                       pad_value = 0,
+                                                       new_size_up = img_exp_up,
+                                                       new_size_down = img_exp_dn)
+
+        msk_sitk, new_size_up, new_size_down = crop_sitk(img_sitk = msk_sitk,
+                                                         curated_size = curated_size,
+                                                         new_size_up = img_crp_up,
+                                                         new_size_down = img_crp_dn)
     
     # if the check on the CT and the mask fails, return
     if not check_mask(patient_id, img_sitk, msk_sitk):
@@ -459,9 +519,11 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
         slice_thickness_index = header.index('SliceThickness')
         recon_diameter_index = header.index('ReconstructionDiameter')
         patient_id_index =header.index('PatientID')
+        mask_file_index = header.index('Mask')
 
         for row in reader:
             img_filename = row[img_file_index]
+            mask_filename = row[mask_file_index]
             #use the image name as the patient_id
             if include_imagename_in_id:
                 patient_id = row[patient_id_index] + '.' + img_filename[0:img_filename.find('.h5')]
@@ -470,7 +532,8 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
 
             patients_data[patient_id] = {'img':os.path.join(raw_data_dir_path, img_filename),
                                         'slice_thickness':float(row[slice_thickness_index]),
-                                        'recon_diameter':float(row[recon_diameter_index])}
+                                        'recon_diameter':float(row[recon_diameter_index]),
+                                        'mask_file':os.path.join(raw_data_dir_path, mask_filename)}
 
 
     print

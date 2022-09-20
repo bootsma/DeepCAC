@@ -8,8 +8,10 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     filename_img = 'C:\\Users\\Gregory\\OneDrive - UHN\\Projects\\JDMI-AI\\CAC-Scoring\\testseg\\CT_cadb05a4-c32f62f0-3500255a-8211bc48-be223c4c.h5'
+    filename_msk = 'C:\\Users\\Gregory\\OneDrive - UHN\\Projects\\JDMI-AI\\CAC-Scoring\\testseg\\Segmentation.nrrd
+
     filename_msk = 'C:\\Users\\Gregory\\OneDrive - UHN\\Projects\\JDMI-AI\\CAC-Scoring\\testseg\\Segmentation.nrrd'
-    h5py_data = h5py.File(filename_img, 'r', swmr=True)
+    h5py_data = h5py.File(filename_img, 'r', swmr=True)dddddddd
     img = np.flip(np.transpose(h5py_data['img'][0], (2, 0, 1)), axis=0)
 
     nrrd_reader = sitk.ImageFileReader()
