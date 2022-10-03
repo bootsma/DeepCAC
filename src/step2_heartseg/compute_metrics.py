@@ -116,8 +116,10 @@ def runCore(raw_spacing, results_list, patientDict):
   mskCube[mskCube > 0] = 1
 
   nrrdReader.SetFileName(patientDict['prdFile'])
+  print('Loading predicted msk file: {}'.format(patientDict['prdFile']))
   prdSitk = nrrdReader.Execute()
   prdCube = sitk.GetArrayFromImage(prdSitk)
+  print('Predicted Cube Seg Voxels Sum: {}'.format(np.sum(prdCube)))
   prdCube[prdCube>0.99] = 1
   prdCube[prdCube<1] = 0
 

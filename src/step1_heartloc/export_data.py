@@ -34,6 +34,15 @@ from functools import partial
 from multiprocessing import Pool
 
 
+# some settings added for our mask data on the export function "run_core"
+ORIGINAL = 0
+ASSIGN_PATIENT_MASK_SPACING = 1
+ASSIGN_MASK_PATIENT_SPACING = 2
+assign_patient_mask_spacing = ASSIGN_PATIENT_MASK_SPACING
+
+flip_mask_on_z = True
+
+
 def resample_sitk(img_sitk, method, curated_spacing, curated_size = None):
 
   """
@@ -294,10 +303,7 @@ def plot_sitk_msk(patient_id, img_sitk, msk_sitk, qc_curated_dir_path):
 ## ----------------------------------------
 ## ----------------------------------------
 
-ORIGINAL = 0
-ASSIGN_PATIENT_MASK_SPACING = 1
-ASSIGN_MASK_PATIENT_SPACING = 2
-assign_patient_mask_spacing = ASSIGN_PATIENT_MASK_SPACING
+
 
 # Process a single scan on one CPU core
 def run_core(curated_dir_path, qc_curated_dir_path, export_png,
@@ -346,15 +352,17 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
     msk_spacing = msk_sitk.GetSpacing()
 
 
-
+  img_orig_spacing = None
+  img_origin = [0,0,0]
   # init SITK reader and writer, load the CT volume in a SITK object
   img_stk = None
   if h5_data:
     h5py_data= h5py.File(patient_data['img'],'r',swmr=True)
 
+    # this is Chris's way in python 3+ some row/col ordering diff in 2.7
     #img = h5py_data['img'][0,...]
     #img = np.rot90(img, k=1, axes=(0,2)) #rotate 90 around y
-    #img = np.rot90(img, k=-1, axeconds=(1,2)) #rotate -90 around x
+    #img = np.rot90(img, k=-1, axes=(1,2)) #rotate -90 around x
     #img_sitk = sitk.GetImageFromArray(img)
 
     # equivelant
@@ -364,13 +372,13 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
     img_sitk = sitk.GetImageFromArray(np.flip(np.transpose(h5py_data['img'][0], (2, 0, 1)), axis=0))
 
     img_size = img_sitk.GetSize()
-
+    img_origin = img_sitk.GetOrigin()
     if msk_spacing is None:
-        img_sitk.SetSpacing([patient_data['recon_diameter']/img_size[0], patient_data['recon_diameter'] / img_size[1],
-                            patient_data['slice_thickness']] )
+        img_orig_spacing = [patient_data['recon_diameter']/img_size[0], patient_data['recon_diameter'] / img_size[1],
+                            patient_data['slice_thickness']]
+        img_sitk.SetSpacing( img_orig_spacing )
     else:
-        print('Original Patient Spacing: {}'.format([patient_data['recon_diameter']/img_size[0], patient_data['recon_diameter'] / img_size[1],
-                            patient_data['slice_thickness']]))
+        print('Original Patient Spacing: {}'.format(img_orig_spacing))
         print('Used Mask Spacing: {}'.format(msk_spacing))
         img_sitk.SetSpacing(msk_spacing)
 
@@ -423,25 +431,38 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
         nrrd_reader.SetFileName(file)
         msk_sitk = nrrd_reader.Execute()
 
+
+
     print("Mask Size: {}".format(msk_sitk.GetSize()))
     print('Spacing: {}'.format(msk_sitk.GetSpacing()))
 
-    if assign_patient_mask_spacing == ASSIGN_MASK_PATIENT_SPACING:
-        print('Assigning Patient Spacing to Mask: {}'.format(img_sitk.GetSpacing()))
-        msk_sitk.SetSpacing(img_sitk.GetSpacing())
+    if assign_patient_mask_spacing == ASSIGN_MASK_PATIENT_SPACING and img_orig_spacing:
+        print('Assigning Patient Spacing to Mask: {}'.format(img_orig_spacing))
+        msk_sitk.SetSpacing(img_orig_spacing)
+    elif assign_patient_mask_spacing == ASSIGN_MASK_PATIENT_SPACING:
+        print('ERROR: Missing original spacing data..')
 
+    #GJB: the masks from kate have the actual origin, over ride original origin...
+    print('Original Origin: {}'.format(msk_sitk.GetOrigin()))
+    msk_sitk.SetOrigin(img_origin)
+    print('New Origin: {}'.format(img_origin))
     # preprocess the segmasks according to the CT preprocessing parameters
-    if has_manual_seg:
-        msk_sitk, curated_size = resample_sitk(img_sitk=msk_sitk,
-                                               method=sitk.sitkLinear,
-                                               curated_spacing=curated_spacing)
 
-        msk_sitk, msk_exp_up, msk_exp_dn = expand_sitk(img_sitk=msk_sitk,
-                                                       curated_size=curated_size,
-                                                       pad_value=0)
+    if flip_mask_on_z:
+        msk_sitk = sitk.Flip(msk_sitk,[False, False, True])
 
-        msk_sitk, new_size_up, new_size_down = crop_sitk(img_sitk=msk_sitk, curated_size=curated_size)
-    else:
+    msk_sitk, curated_size = resample_sitk(img_sitk=msk_sitk,
+                                           method=sitk.sitkLinear,
+                                           curated_spacing=curated_spacing)
+
+    msk_sitk, msk_exp_up, msk_exp_dn = expand_sitk(img_sitk=msk_sitk,
+                                                   curated_size=curated_size,
+                                                   pad_value=0)
+
+    msk_sitk, new_size_up, new_size_down = crop_sitk(img_sitk=msk_sitk, curated_size=curated_size)
+
+    """ This was the old way, not sure why they wanted to pass in  padding info
+        
         msk_sitk, curated_size = resample_sitk(img_sitk = msk_sitk,
                                                method = sitk.sitkNearestNeighbor,
                                                curated_spacing = curated_spacing)
@@ -456,7 +477,8 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
                                                          curated_size = curated_size,
                                                          new_size_up = img_crp_up,
                                                          new_size_down = img_crp_dn)
-    
+    """
+
     # if the check on the CT and the mask fails, return
     if not check_mask(patient_id, img_sitk, msk_sitk):
       return

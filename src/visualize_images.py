@@ -17,8 +17,7 @@ def run_parser():
                                                  "combine_results "
                                                  "and looks for the segmented CAC data and original volume to create "
                                                  "a visualization\n "
-                                                 "of the results. The figures are output in 3rd step directory in"
-                                                 "cropped_qc.")
+                                                 "of the results. The figures are output in 4th step directory in")
 
     parser.add_argument('result_dir', type=str, help="Main output dir from DeepCAC")
     parser.add_argument('cac_file', type=str, help="CSV File from combine_results.py")

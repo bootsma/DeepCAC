@@ -105,6 +105,15 @@ def run_inference(model_weights_dir_path, data_dir, output_dir,
       imgsTrue[patientIndex, 0:img.shape[0], :, :] = testDataRaw[patientIndex][1]
       msksTrue[patientIndex, 0:img.shape[0], :, :] = testDataRaw[patientIndex][2]
       imgTest[j, 0:img.shape[0], :, :] = testDataRaw[patientIndex][1]
+
+      #todo remove npsae GJB only for testing
+      #START REMOVE SECTION
+      output_dir_tmp = os.path.join(output_dir, 'tmp')
+      if not os.path.exists(output_dir_tmp):
+        os.mkdir(output_dir_tmp)
+      np.save(os.path.join(output_dir_tmp, patientID+'_INPUT_IMG'), testDataRaw[patientIndex][1])
+      #END REMOVE SECTIoN
+
     msksPred = model.predict(imgTest[:, :, :, :, np.newaxis])
 
     for j in range(mgpu):
