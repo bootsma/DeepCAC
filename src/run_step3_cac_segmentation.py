@@ -41,7 +41,7 @@ parser.add_argument('--conf',
 
 
 args = parser.parse_args()
-print('Running Config File: {}'.format(args.conf))
+
 conf_file_path = os.path.join(base_conf_file_path, args.conf)
 
 with open(conf_file_path) as f:
@@ -126,6 +126,7 @@ assert len(os.listdir(curated_dir_path))
 
 # assert the inference data folder exists and it is non empty
 assert os.path.exists(step2_inferred_dir_path)
+#could be empty if we are just using given mask
 assert len(os.listdir(step2_inferred_dir_path))
 
 # assert the weights folder exists and the weights file is found

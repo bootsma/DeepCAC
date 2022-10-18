@@ -59,13 +59,18 @@ def flip_and_save( nrrd_file, axis = 0, create_backup=True ):
     nrrd_reader = sitk.ImageFileReader()
     nrrd_reader.SetFileName(nrrd_file)
     img_sitk = nrrd_reader.Execute()
+    img_sitk = sitk.Flip(img_sitk, [False, False, True])
+    nrrd_writer = sitk.ImageFileWriter()
+
     img = sitk.GetArrayFromImage(img_sitk)
     img = (np.flip(img, axis))
-    nrrd_writer = sitk.ImageFileWriter()
+    
     simg = sitk.GetImageFromArray(img)
     simg.SetSpacing(img_sitk.GetSpacing())
-    nrrd_writer.SetFileName(nrrd_file)
-    nrrd_writer.SetUseCompression(True)
+
+    file, ext = os.path.splitext(nrrd_file)
+    nrrd_writer.SetFileName(file+'_flipped.nrrd')
+    #nrrd_writer.SetUseCompression(True)
     nrrd_writer.Execute(simg)
 
 
@@ -79,8 +84,9 @@ if __name__ == "__main__":
     names = ['AO21991VE.R','AS15605YE.R','GU04817JG.R','IP13348RH.R','KG93381SY.R','PX90332IE.R']
 
     dir = "C:\Users\Gregory\OneDrive - UHN\Projects\JDMI-AI\CAC-Scoring\Kate_Segmentations\\flipcheck"
-    name ="GU04817JG.R.nrrd"
-    #flip_and_save(os.path.join(dir,name))
+    name ="IP13348RH.R.nrrd"
+    flip_and_save(os.path.join(dir,name))
+    exit()
 
     save_fig_filename = None
     for name in names:

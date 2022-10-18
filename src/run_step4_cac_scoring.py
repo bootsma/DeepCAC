@@ -26,6 +26,10 @@ from functools import partial
 from scipy.ndimage import measurements
 from multiprocessing import Pool, Manager
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 ## ----------------------------------------
 
 base_conf_file_path = 'config/'
@@ -177,7 +181,9 @@ def run_core(res_dict, raw_dir, crop_dir, mask, ag_div, nr_con_px, msk_thr, prd_
     return
 
   img = np.load(img_file)
+
   prd = np.load(prd_file)
+  print("Loading prd: ", prd_file)
 
   prd[prd < msk_thr] = 0
   prd[prd > 0] = 1
@@ -192,14 +198,29 @@ def run_core(res_dict, raw_dir, crop_dir, mask, ag_div, nr_con_px, msk_thr, prd_
 
   if mask:
     msk_file = os.path.join(crop_dir, patient_id + '_msk.npy')
+    print('Loading msk: ',os.path.join(crop_dir, patient_id + '_msk.npy'))
+
+
+
     if not os.path.exists(msk_file):
       print 'Error - MSK not found', patient_id, msk_file
       return
     msk = np.load(msk_file)
+
+    fig, ax = plt.subplots(2,3)
+    ax[0,0].imshow(prd[:,:,int(prd.shape[2]/2)] )
+    ax[1,0].imshow(msk[:, :, int(msk.shape[2]/2)] )
+    ax[0,1].imshow(prd[:,int(prd.shape[1])/2,:])
+    ax[1,1].imshow(msk[:,int(prd.shape[1]/2),:])
+    ax[0,2].imshow(prd[int(prd.shape[0]/2),:,:])
+    ax[1,2].imshow(msk[int(prd.shape[0]/2),:,:])
+    plt.savefig(msk_file+'.png')
+
     cac_calc = round(get_ag(img, msk, nr_con_px, spacing, ag_div), 3)
     class_calc = get_ag_class(cac_calc)
 
     dice = round(np.round(dice_coef(msk, prd, smooth=1.), 3), 3)
+
   else:
     cac_calc = -1
     class_calc = -1

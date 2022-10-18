@@ -431,7 +431,11 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
         nrrd_reader.SetFileName(file)
         msk_sitk = nrrd_reader.Execute()
 
-
+    if flip_mask_on_z:
+        print('flipping msk using nmpy')
+        msk_spacing = msk_sitk.GetSpacing()
+        msk_sitk =  sitk.GetImageFromArray(np.flip( sitk.GetArrayFromImage(msk_sitk),0))
+        msk_sitk.SetSpacing(msk_spacing)
 
     print("Mask Size: {}".format(msk_sitk.GetSize()))
     print('Spacing: {}'.format(msk_sitk.GetSpacing()))
@@ -448,8 +452,10 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
     print('New Origin: {}'.format(img_origin))
     # preprocess the segmasks according to the CT preprocessing parameters
 
+    """ old way this just changed dir vector on save
     if flip_mask_on_z:
         msk_sitk = sitk.Flip(msk_sitk,[False, False, True])
+    """
 
     msk_sitk, curated_size = resample_sitk(img_sitk=msk_sitk,
                                            method=sitk.sitkLinear,
