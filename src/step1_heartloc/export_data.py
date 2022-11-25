@@ -40,7 +40,6 @@ ASSIGN_PATIENT_MASK_SPACING = 1
 ASSIGN_MASK_PATIENT_SPACING = 2
 assign_patient_mask_spacing = ASSIGN_PATIENT_MASK_SPACING
 
-flip_mask_on_z = True
 
 
 def resample_sitk(img_sitk, method, curated_spacing, curated_size = None):
@@ -329,6 +328,8 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 
   """
 
+  assign_patient_mask_spacing = patients_data['voxel_assignment']
+
   print 'Processing patient', patient_id
   patient_data = patients_data[patient_id]
   nrrd_reader = sitk.ImageFileReader()
@@ -374,8 +375,16 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
     img_size = img_sitk.GetSize()
     img_origin = img_sitk.GetOrigin()
     if msk_spacing is None:
-        img_orig_spacing = [patient_data['recon_diameter']/img_size[0], patient_data['recon_diameter'] / img_size[1],
+        csv_voxel_info = [patient_data['recon_diameter']/img_size[0], patient_data['recon_diameter'] / img_size[1],
                             patient_data['slice_thickness']]
+
+        if patient_data['h5_voxel_info']:
+            h5_voxel_info = np.array(h5py_data['voxelSpacing'])
+            img_orig_spacing = h5_voxel_info
+            print('Have H5 spacing: {}, cvs data: {}'.format(h5_voxel_info, csv_voxel_info))
+        else:
+            img_orig_spacing = csv_voxel_info
+        img_orig_spacing =
         img_sitk.SetSpacing( img_orig_spacing )
     else:
         print('Original Patient Spacing: {}'.format(img_orig_spacing))
@@ -431,6 +440,7 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
         nrrd_reader.SetFileName(file)
         msk_sitk = nrrd_reader.Execute()
 
+    flip_mask_on_z = True # needed because some export problems
     if flip_mask_on_z:
         print('flipping msk using nmpy')
         msk_spacing = msk_sitk.GetSpacing()
@@ -504,7 +514,7 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 ## ----------------------------------------
 def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
                    curated_size, curated_spacing, num_cores, export_png, has_manual_seg, patient_csv_file = None,
-                   include_imagename_in_id=True):
+                   include_imagename_in_id=True, patient_h5_voxel_info=False, spacing_assignment=0):
     """
     Similar to export_data except we excpect to find a csv file that contains a list of the h5 images [DicomFileName],
      along with the slice thickness [SliceThickness] and reconstruction diameter [ReconstructionDiameter]
@@ -522,6 +532,9 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
       export_png          - required : whether to export the quality control png or not
       has_manual_seg      - required : whether a manual segmentation for the volume is available or not
       csv_file            - if you have more than  one csv_file in the folder (e.g. breaking up data into groups)
+      spacing_assignment  - 0 mask and patient use there own voxel info, 1 assign the patient voxel info to the mask
+                            2 assign mask voxel info to patient (for testing purposes)
+      patient_h5_voxel_info - if this is true it assumes path h5 data file for the image contains 'voxelSpacing'
 
     """
 
@@ -561,6 +574,8 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
             patients_data[patient_id] = {'img':os.path.join(raw_data_dir_path, img_filename),
                                         'slice_thickness':float(row[slice_thickness_index]),
                                         'recon_diameter':float(row[recon_diameter_index]),
+                                        'h5_voxel_info':patient_h5_voxel_info,
+                                        'voxel_assignment':spacing_assignment,
                                         'mask_file':os.path.join(raw_data_dir_path, mask_filename)}
 
 

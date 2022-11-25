@@ -59,6 +59,13 @@ raw_data_folder_name = yaml_conf["io"]["raw_data_folder_name"]
 raw_data_proc_type = yaml_conf["io"].get("raw_data_proc_type")
 raw_data_patient_csv_file = yaml_conf["io"].get("patient_csv_file")
 
+
+###########################################################
+# VOXEL SPACING and ORIENTATION SETTINGS
+#voxel information can either be taken from csv file or h5 data, only matters if raw_data_proc_type == "h5_one_dir"
+raw_data_h5_voxel_info = yaml_conf["io"].get("raw_data_h5_voxel_info", False)
+spacing_assignment = yaml["io"].get("assign_patient_mask_spacing",0)
+
 heartloc_data_folder_name = yaml_conf["io"]["heartloc_data_folder_name"]
 
 curated_data_folder_name = yaml_conf["io"]["curated_data_folder_name"]
@@ -146,7 +153,10 @@ elif raw_data_proc_type == "h5_one_dir":
                             num_cores=num_cores,
                             export_png=export_png,
                             has_manual_seg=has_manual_seg,
-                            patient_csv_file=raw_data_patient_csv_file)
+                            patient_csv_file=raw_data_patient_csv_file,
+                            patient_h5_voxel_info=raw_data_h5_voxel_info,
+                            spacing_assignment =spacing_assignment
+                            )
 else:
     raise Exception("Unkown raw data process type: {}".format(raw_data_proc_type))
 # data downsampling
