@@ -64,7 +64,7 @@ raw_data_patient_csv_file = yaml_conf["io"].get("patient_csv_file")
 # VOXEL SPACING and ORIENTATION SETTINGS
 #voxel information can either be taken from csv file or h5 data, only matters if raw_data_proc_type == "h5_one_dir"
 raw_data_h5_voxel_info = yaml_conf["io"].get("raw_data_h5_voxel_info", False)
-spacing_assignment = yaml["io"].get("assign_patient_mask_spacing",0)
+spacing_assignment = yaml_conf["io"].get("assign_patient_mask_spacing",0)
 
 heartloc_data_folder_name = yaml_conf["io"]["heartloc_data_folder_name"]
 
@@ -145,6 +145,7 @@ if raw_data_proc_type is None:
                         export_png = export_png,
                         has_manual_seg = has_manual_seg)
 elif raw_data_proc_type == "h5_one_dir":
+    print( "CSV File: {}".format(raw_data_patient_csv_file))
     export_data.export_data_h5(raw_data_dir_path=raw_data_dir_path,
                             curated_dir_path=curated_dir_path,
                             qc_curated_dir_path=qc_curated_dir_path,

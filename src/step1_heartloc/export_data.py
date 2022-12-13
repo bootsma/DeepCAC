@@ -328,10 +328,11 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 
   """
 
-  assign_patient_mask_spacing = patients_data['voxel_assignment']
+
 
   print 'Processing patient', patient_id
   patient_data = patients_data[patient_id]
+  assign_patient_mask_spacing = patient_data['voxel_assignment']
   nrrd_reader = sitk.ImageFileReader()
   nrrd_writer = sitk.ImageFileWriter()
 
@@ -384,8 +385,8 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
             print('Have H5 spacing: {}, cvs data: {}'.format(h5_voxel_info, csv_voxel_info))
         else:
             img_orig_spacing = csv_voxel_info
-        img_orig_spacing =
         img_sitk.SetSpacing( img_orig_spacing )
+
     else:
         print('Original Patient Spacing: {}'.format(img_orig_spacing))
         print('Used Mask Spacing: {}'.format(msk_spacing))
@@ -552,6 +553,8 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
     else:
         patient_csv_file = os.path.join(raw_data_dir_path, patient_csv_file)
 
+    print('Using CSV File: {}'.format(patient_csv_file))
+
     # read the csv to get each patient image info to process
     with open(patient_csv_file) as csvfile:
         reader = csv.reader(csvfile)
@@ -560,11 +563,21 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
         slice_thickness_index = header.index('SliceThickness')
         recon_diameter_index = header.index('ReconstructionDiameter')
         patient_id_index =header.index('PatientID')
-        mask_file_index = header.index('Mask')
+        if has_manual_seg:
+            mask_file_index = header.index('Mask')
+        else:
+            mask_file_index = None
 
         for row in reader:
+            print('Row: {}'.format(row))
+            print('')
             img_filename = row[img_file_index]
-            mask_filename = row[mask_file_index]
+            if has_manual_seg:
+                mask_filename = row[mask_file_index]
+                mask_filename = os.path.join(raw_data_dir_path, mask_filename)
+            else:
+                mask_filename = None
+
             #use the image name as the patient_id
             if include_imagename_in_id:
                 patient_id = row[patient_id_index] + '.' + img_filename[0:img_filename.find('.h5')]
@@ -576,7 +589,7 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
                                         'recon_diameter':float(row[recon_diameter_index]),
                                         'h5_voxel_info':patient_h5_voxel_info,
                                         'voxel_assignment':spacing_assignment,
-                                        'mask_file':os.path.join(raw_data_dir_path, mask_filename)}
+                                        'mask_file':mask_filename}
 
 
     print
