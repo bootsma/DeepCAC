@@ -34,6 +34,7 @@ def convert(img_file, out_dir, is_mask=False):
                                 os.path.splitext(os.path.split(img_file)[-1])[0] + out_vol_type)
 
     print('Converting {} -> {} '.format(img_file, new_filename))
+
     sitk_img.SetSpacing([0.68,0.68,2.5])
     sitk.WriteImage(sitk_img, new_filename)
 

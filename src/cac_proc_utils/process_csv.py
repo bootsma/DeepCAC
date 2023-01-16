@@ -11,6 +11,7 @@ def read_and_filter_patients( csv_filename, debug = False):
         print( 'Reading ' , csv_filename)
         reader = csv.reader(csv_file)
         header = next(reader)
+        header.append('Number of Slices')
         prev_row= None
         dicom_filename_index = header.index('DicomFileName')
         slice_thickness_index = header.index('SliceThickness')
@@ -33,11 +34,12 @@ def read_and_filter_patients( csv_filename, debug = False):
                 if debug:
                     print('New: {}, Row: {}'.format(row[dicom_filename_index], row_count))
                 unique_patients.append(row)
+                unique_patients[-1].append(1)
                 patient_popped = False
             else:
                 slice_consistent = (prev_row[slice_thickness_index] == row[slice_thickness_index] and
                                     prev_row[recon_diameter_index] == row[recon_diameter_index])
-
+                unique_patients[-1][-1]+=1
                 if not slice_consistent:
                     if debug:
                         print('Patient Image: {} not consistent in Image Slice: {}'.format(row[dicom_filename_index], row[0]))
@@ -69,7 +71,11 @@ def run_parser():
 
 if __name__ == '__main__':
 
+    print(os.getcwd())
+    print('wat')
     args = run_parser()
+
+
 
     if args.type_split and args.split:
         raise Exception("Only one type of data splitting currently supported")
