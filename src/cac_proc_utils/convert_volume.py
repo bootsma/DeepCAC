@@ -33,11 +33,11 @@ def convert_volumes(file_a, file_b, show_vol = int):
         print('Spacing: {}\t Size: {}'.format(spacing, input_img_sitk.GetSize()))
         fig, ax = plt.subplots(1, 3, figsize=(24, 8))
         ax[0].imshow(img_cube[int(img_cube.shape[0] / 2), :, :], cmap='gray')
-        ax[0].set_aspect(spacing[2]/spacing[1])
+        ax[0].set_aspect(spacing[0]/spacing[1])
         ax[1].imshow(img_cube[:, int(img_cube.shape[1] / 2), :], cmap='gray')
-        ax[1].set_aspect(spacing[2] / spacing[0])
-        ax[2].imshow(img_cube[:, :, int(img_cube.shape[2] / 2)], cmap='gray')
         ax[1].set_aspect(spacing[2] / spacing[1])
+        ax[2].imshow(img_cube[:, :, int(img_cube.shape[2] / 2)], cmap='gray')
+        ax[2].set_aspect(spacing[2] / spacing[0])
 
     if show_vol==2:
         img_cube = sitk.GetArrayFromImage(input_img_sitk)
