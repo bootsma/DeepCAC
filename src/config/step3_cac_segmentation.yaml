@@ -1,8 +1,8 @@
 # config file for the third step of the pipeline - CAC segmentation
-
+# specifically this is config for testing, assumes has manual segmentation data
 io:
   # parent data directory
-  path_to_data_folder: "/cluster/projects/mcintoshgroup/CAC-Data-Link" # this directory should exist already
+  path_to_data_folder: "/cluster/projects/jdmiaicentre/AICentreServer/data/DeepCAC_TestData" # this directory should exist already
   
   # parent data directory subdir where raw data should be found
   raw_data_folder_name: "raw" # this directory should exist already (provided)
@@ -47,7 +47,7 @@ processing:
   number_of_gpus: 2
 
   # whether or not the segmentation masks are available
-  has_manual_seg: false
+  has_manual_seg: true
 
 
   # whether or not png images for quality control should be exported

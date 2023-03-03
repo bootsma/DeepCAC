@@ -2,16 +2,16 @@
 
 io:
   # parent data directory
-  path_to_data_folder: "/cluster/projects/mcintoshgroup/CAC-Data-Link"
+  path_to_data_folder: "/cluster/projects/jdmiaicentre/AICentreServer/data/DeepCAC_TestData"
   
   # parent data directory subdir where raw data should be found
   raw_data_folder_name: "raw"
 
   # set this if you are using h5 data all in one directory
-  raw_data_proc_type: "h5_one_dir"
+  # raw_data_proc_type: "h5_one_dir"
 
   # specify a csv file that is in the raw folder if you are using multiple csv files
-  # other wise it assumes just one is in the directory
+  # other wise it assumes just one is in the directory only valid for if raw_data_proc_type: "h5_one_dir"
   patient_csv_file: "dicom_headers_h5.csv"
   
   # parent data directory subdir where the outputs of the first step of the pipeline should be saved
@@ -52,7 +52,7 @@ processing:
   number_of_gpus: 2
 
   # whether or not the segmentation masks are available
-  has_manual_seg: false
+  has_manual_seg: true
   
   # whether or not holes in segmentation masks should be filled
   fill_mask_holes: true
