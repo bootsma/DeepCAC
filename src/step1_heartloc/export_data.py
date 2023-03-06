@@ -35,7 +35,7 @@ from multiprocessing import Pool
 
 
 # some settings added for our mask data on the export function "run_core"
-ORIGINAL = 0
+KEEP_ORIGINAL_SPACING = 0
 ASSIGN_PATIENT_MASK_SPACING = 1
 ASSIGN_MASK_PATIENT_SPACING = 2
 
@@ -303,10 +303,100 @@ def plot_sitk_msk(patient_id, img_sitk, msk_sitk, qc_curated_dir_path):
 ## ----------------------------------------
 
 
+## ----------------------------------------
+## ----------------------------------------
 
-# Process a single scan on one CPU core
+# Process a single scan on one CPU core Original Code
 def run_core(curated_dir_path, qc_curated_dir_path, export_png,
-             has_manual_seg, curated_size, curated_spacing, patients_data, patient_id, h5_data = False):
+             has_manual_seg, curated_size, curated_spacing, patients_data, patient_id):
+    """
+    Pre-processing first step core function to be run (potentially) with multiprocessing.
+    @params:
+      curated_dir_path    - required : output directory for the file(s) (CT and segmask)
+      qc_curated_dir_path - required : output directory for the png file
+      export_png          - required : whether to export the quality control png or not
+      has_manual_seg      - required : whether a manual segmentation for the volume is available or not
+      curated_size            - required : list containing the desired size, in voxels, of the output data
+      curated_spacing         - required : list containing the desired spacing, in mm, of the output data
+      patients_data       - required : (pointer to) dictionary storing, for each patient, a list
+                                       containing the path to the CT and segmask NRRD files
+      patient_id          - required : patient ID, used to index "patients_data"
+    """
+
+    print 'Processing patient', patient_id
+
+    # init SITK reader and writer, load the CT volume in a SITK object
+    nrrd_reader = sitk.ImageFileReader()
+    nrrd_writer = sitk.ImageFileWriter()
+    nrrd_reader.SetFileName(patients_data[patient_id][0])
+    img_sitk = nrrd_reader.Execute()
+
+    # take care of the size/spacing difference - resample SITK image, expand/crop
+    img_sitk, curated_size = resample_sitk(img_sitk=img_sitk,
+                                           method=sitk.sitkLinear,
+                                           curated_spacing=curated_spacing)
+
+    img_sitk, img_exp_up, img_exp_dn = expand_sitk(img_sitk=img_sitk,
+                                                   curated_size=curated_size,
+                                                   pad_value=-1024)
+
+    img_sitk, img_crp_up, img_crp_dn = crop_sitk(img_sitk=img_sitk, curated_size=curated_size)
+
+    # if the check on the CT fails, return
+    if not check_img(patient_id, img_sitk, curated_size, curated_spacing):
+        return
+
+    # save preprocessed CT volume
+    nrrd_writer.SetFileName(os.path.join(curated_dir_path, patient_id + '_img.nrrd'))
+    nrrd_writer.SetUseCompression(True)
+    nrrd_writer.Execute(img_sitk)
+
+    # if the segmask is not available but export_png is set to True, export the CT quality control png
+    if export_png and not has_manual_seg:
+        plot_sitk(patient_id, img_sitk, qc_curated_dir_path)
+
+    # if the segmask *is* available
+    if has_manual_seg:
+        nrrd_reader.SetFileName(patients_data[patient_id][1])
+        msk_sitk = nrrd_reader.Execute()
+
+        # preprocess the segmasks according to the CT preprocessing parameters
+        msk_sitk, curated_size = resample_sitk(img_sitk=msk_sitk,
+                                               method=sitk.sitkNearestNeighbor,
+                                               curated_spacing=curated_spacing)
+
+        msk_sitk, msk_exp_up, msk_exp_dn = expand_sitk(img_sitk=msk_sitk,
+                                                       curated_size=curated_size,
+                                                       pad_value=0,
+                                                       new_size_up=img_exp_up,
+                                                       new_size_down=img_exp_dn)
+
+        msk_sitk, new_size_up, new_size_down = crop_sitk(img_sitk=msk_sitk,
+                                                         curated_size=curated_size,
+                                                         new_size_up=img_crp_up,
+                                                         new_size_down=img_crp_dn)
+
+        # if the check on the CT and the mask fails, return
+        if not check_mask(patient_id, img_sitk, msk_sitk):
+            return
+
+        # save preprocessed segmask volume
+        nrrd_writer.SetFileName(os.path.join(curated_dir_path, patient_id + '_msk.nrrd'))
+        nrrd_writer.SetUseCompression(True)
+        nrrd_writer.Execute(msk_sitk)
+
+        # if export_png is set to True when the mask is available, export the quality control png with
+        # the segmentation mask overlayed
+        if export_png:
+            plot_sitk_msk(patient_id, img_sitk, msk_sitk, qc_curated_dir_path)
+
+
+## ----------------------------------------
+## ----------------------------------------
+
+# Process a single scan on one CPU core, using H5 data as used in initial experiments with Kate and Chris
+def run_core_h5(curated_dir_path, qc_curated_dir_path, export_png,
+             has_manual_seg, curated_size, curated_spacing, patients_data, patient_id):
 
     
   """
@@ -320,25 +410,18 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
     has_manual_seg      - required : whether a manual segmentation for the volume is available or not
     curated_size            - required : list containing the desired size, in voxels, of the output data
     curated_spacing         - required : list containing the desired spacing, in mm, of the output data
-    patients_data       - required : (pointer to) dictionary storing, for each patient, a list
-                                     containing the path to the CT and segmask NRRD files
+    patients_data       - required : (pointer to) dictionary storing, for each patient, a dictionary
+                                     containing the image data ('img', 'mask_file', 'recon_diameter',...)
     patient_id          - required : patient ID, used to index "patients_data"
-    h5_data             - optional : False will process the original way, true will process data assuming h5 and
-                            a new type of dict inside patients_data
-
   """
 
 
 
   print 'Processing patient', patient_id
-  print( "Data: {}".format(patients_data))
   patient_data = patients_data[patient_id]
-
-
-  assign_patient_mask_spacing = patient_data.get('voxel_assignment')
+  assign_patient_mask_spacing = patient_data['voxel_assignment']
   if assign_patient_mask_spacing is None:
-      assign_patient_mask_spacing = ORIGINAL
-
+      assign_patient_mask_spacing = KEEP_ORIGINAL_SPACING
 
   nrrd_reader = sitk.ImageFileReader()
   nrrd_writer = sitk.ImageFileWriter()
@@ -347,11 +430,12 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
   msk_sitk = None
   msk_spacing = None
   if has_manual_seg and assign_patient_mask_spacing == ASSIGN_PATIENT_MASK_SPACING:
+
     file =None
-    if h5_data and patient_data is not None:
+    if patient_data is not None:
         file = patient_data['mask_file']
-    else:
-        file = patients_data[patient_id][1]
+    else
+        raise Exception('No Patient Data!')
 
     print('Reading Mask: {}', file)
 
@@ -364,47 +448,43 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
   img_origin = [0,0,0]
   # init SITK reader and writer, load the CT volume in a SITK object
   img_stk = None
-  if h5_data:
-    h5py_data= h5py.File(patient_data['img'],'r',swmr=True)
 
-    # this is Chris's way in python 3+ some row/col ordering diff in 2.7
-    #img = h5py_data['img'][0,...]
-    #img = np.rot90(img, k=1, axes=(0,2)) #rotate 90 around y
-    #img = np.rot90(img, k=-1, axes=(1,2)) #rotate -90 around x
-    #img_sitk = sitk.GetImageFromArray(img)
+  h5py_data= h5py.File(patient_data['img'],'r',swmr=True)
 
-    # equivelant
-    # or img_sitk = sitk.GetImageFromArray(transpose(img,(1,2,0))) #untested
+  # this is Chris's way in python 3+ some row/col ordering diff in 2.7
+  # img = h5py_data['img'][0,...]
+  # img = np.rot90(img, k=1, axes=(0,2)) #rotate 90 around y
+  # img = np.rot90(img, k=-1, axes=(1,2)) #rotate -90 around x
+  # img_sitk = sitk.GetImageFromArray(img)
 
-    #original
-    img_sitk = sitk.GetImageFromArray(np.flip(np.transpose(h5py_data['img'][0], (2, 0, 1)), axis=0))
+  # equivelant
+  # or img_sitk = sitk.GetImageFromArray(transpose(img,(1,2,0))) #untested
 
-    img_size = img_sitk.GetSize()
-    img_origin = img_sitk.GetOrigin()
-    if msk_spacing is None:
-        csv_voxel_info = [patient_data['recon_diameter']/img_size[0], patient_data['recon_diameter'] / img_size[1],
-                            patient_data['slice_thickness']]
+  # Read with row/col ordering 2.7.17 python sitk
+  img_sitk = sitk.GetImageFromArray(np.flip(np.transpose(h5py_data['img'][0], (2, 0, 1)), axis=0))
 
-        if patient_data['h5_voxel_info']:
-            h5_voxel_info = np.array(h5py_data['voxelSpacing'])
-            img_orig_spacing = h5_voxel_info
-            print('Have H5 spacing: {}, cvs data: {}'.format(h5_voxel_info, csv_voxel_info))
-        else:
-            img_orig_spacing = csv_voxel_info
-        img_sitk.SetSpacing( img_orig_spacing )
+  img_size = img_sitk.GetSize()
+  img_origin = img_sitk.GetOrigin()
+  if msk_spacing is None:
+      csv_voxel_info = [patient_data['recon_diameter'] / img_size[0], patient_data['recon_diameter'] / img_size[1],
+                        patient_data['slice_thickness']]
 
-    else:
-        print('Original Patient Spacing: {}'.format(img_orig_spacing))
-        print('Used Mask Spacing: {}'.format(msk_spacing))
-        img_sitk.SetSpacing(msk_spacing)
-
-    if msk_spacing is None and assign_patient_mask_spacing == ASSIGN_PATIENT_MASK_SPACING:
-        print('ERROR: no mask spacing data to assign to patient.')
-
+      if patient_data['h5_voxel_info']:
+          h5_voxel_info = np.array(h5py_data['voxelSpacing'])
+          img_orig_spacing = h5_voxel_info
+          print('Have H5 spacing: {}, cvs data: {}'.format(h5_voxel_info, csv_voxel_info))
+      else:
+          img_orig_spacing = csv_voxel_info
+      img_sitk.SetSpacing(img_orig_spacing)
 
   else:
-    nrrd_reader.SetFileName(patients_data[patient_id][0])
-    img_sitk = nrrd_reader.Execute()
+      print('Original Patient Spacing: {}'.format(img_orig_spacing))
+      print('Used Mask Spacing: {}'.format(msk_spacing))
+      img_sitk.SetSpacing(msk_spacing)
+
+  if msk_spacing is None and assign_patient_mask_spacing == ASSIGN_PATIENT_MASK_SPACING:
+      print('ERROR: no mask spacing data to assign to patient.')
+
 
   print("Data Size: {}".format(img_sitk.GetSize()))
   print('Spacing: {}'.format(img_sitk.GetSpacing()))
@@ -436,12 +516,8 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
   if has_manual_seg:
 
     if msk_sitk is None:
-        file =None
-        if h5_data and patient_data is not None:
-            file = patient_data['mask_file']
-        else:
-            file = patients_data[patient_id][1]
 
+        file = patient_data['mask_file']
         print('Reading Mask: {}', file)
 
         nrrd_reader.SetFileName(file)
@@ -449,7 +525,7 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 
     flip_mask_on_z = True # needed because some export problems
     if flip_mask_on_z:
-        print('flipping msk using nmpy')
+        print('WARNING: Flipping mask on Z using numpy')
         msk_spacing = msk_sitk.GetSpacing()
         msk_sitk =  sitk.GetImageFromArray(np.flip( sitk.GetArrayFromImage(msk_sitk),0))
         msk_sitk.SetSpacing(msk_spacing)
@@ -464,15 +540,11 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
         print('ERROR: Missing original spacing data..')
 
     #GJB: the masks from kate have the actual origin, over ride original origin...
-    print('Original Origin: {}'.format(msk_sitk.GetOrigin()))
+    print('Mask Original Origin: {}'.format(msk_sitk.GetOrigin()))
     msk_sitk.SetOrigin(img_origin)
-    print('New Origin: {}'.format(img_origin))
+    print('Mask New Origin: {} (Taken from image)'.format(img_origin))
     # preprocess the segmasks according to the CT preprocessing parameters
 
-    """ old way this just changed dir vector on save
-    if flip_mask_on_z:
-        msk_sitk = sitk.Flip(msk_sitk,[False, False, True])
-    """
 
     msk_sitk, curated_size = resample_sitk(img_sitk=msk_sitk,
                                            method=sitk.sitkLinear,
@@ -504,7 +576,8 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 
     # if the check on the CT and the mask fails, return
     if not check_mask(patient_id, img_sitk, msk_sitk):
-      return
+        print('WARNING: Mask Check Failed')
+        return
 
     # save preprocessed segmask volume
     nrrd_writer.SetFileName(os.path.join(curated_dir_path, patient_id + '_msk.nrrd'))
@@ -575,8 +648,6 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
             mask_file_index = None
 
         for row in reader:
-            print('Row: {}'.format(row))
-            print('')
             img_filename = row[img_file_index]
             if has_manual_seg:
                 mask_filename = row[mask_file_index]
@@ -606,22 +677,21 @@ def export_data_h5(raw_data_dir_path, curated_dir_path, qc_curated_dir_path,
     # if single core, then run core as one would normally do with a function
     if num_cores == 1:
         for patient_id in patients_data:
-            run_core(curated_dir_path=curated_dir_path,
+            run_core_h5(curated_dir_path=curated_dir_path,
                      qc_curated_dir_path=qc_curated_dir_path,
                      export_png=export_png,
                      has_manual_seg=has_manual_seg,
                      curated_size=curated_size,
                      curated_spacing=curated_spacing,
                      patients_data=patients_data,
-                     patient_id=patient_id,
-                     h5_data = True)
+                     patient_id=patient_id)
 
     # else, run the preprocessing in parallel
     elif num_cores > 0:
         pool = Pool(processes=num_cores)
-        pool.map(partial(run_core, curated_dir_path, qc_curated_dir_path, export_png, has_manual_seg, curated_size,
+        pool.map(partial(run_core_h5, curated_dir_path, qc_curated_dir_path, export_png, has_manual_seg, curated_size,
                          curated_spacing,
-                         patients_data, h5_data=True), patients_data.keys())
+                         patients_data), patients_data.keys())
         pool.close()
         pool.join()
     else:
