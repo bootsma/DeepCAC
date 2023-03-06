@@ -331,6 +331,7 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 
 
   print 'Processing patient', patient_id
+  print( "Data: {}".format(patients_data))
   patient_data = patients_data[patient_id]
 
 
