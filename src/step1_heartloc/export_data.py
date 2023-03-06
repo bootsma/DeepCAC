@@ -332,11 +332,11 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 
   print 'Processing patient', patient_id
   patient_data = patients_data[patient_id]
-  assigne_patient_mask_spacing = ORIGINAL
 
-  if h5_data:
-      assign_patient_mask_spacing = patient_data['voxel_assignment']
 
+  assign_patient_mask_spacing = patient_data.get('voxel_assignment')
+  if assign_patient_mask_spacing is None:
+      assign_patient_mask_spacing = ORIGINAL
 
 
   nrrd_reader = sitk.ImageFileReader()
