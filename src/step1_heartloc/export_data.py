@@ -434,7 +434,7 @@ def run_core_h5(curated_dir_path, qc_curated_dir_path, export_png,
     file =None
     if patient_data is not None:
         file = patient_data['mask_file']
-    else
+    else:
         raise Exception('No Patient Data!')
 
     print('Reading Mask: {}', file)
