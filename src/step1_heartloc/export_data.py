@@ -38,7 +38,7 @@ from multiprocessing import Pool
 ORIGINAL = 0
 ASSIGN_PATIENT_MASK_SPACING = 1
 ASSIGN_MASK_PATIENT_SPACING = 2
-assign_patient_mask_spacing = ASSIGN_PATIENT_MASK_SPACING
+
 
 
 
@@ -332,7 +332,13 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
 
   print 'Processing patient', patient_id
   patient_data = patients_data[patient_id]
-  assign_patient_mask_spacing = patient_data['voxel_assignment']
+  assigne_patient_mask_spacing = ORIGINAL
+
+  if h5_data:
+      assign_patient_mask_spacing = patient_data['voxel_assignment']
+
+
+
   nrrd_reader = sitk.ImageFileReader()
   nrrd_writer = sitk.ImageFileWriter()
 
@@ -340,7 +346,6 @@ def run_core(curated_dir_path, qc_curated_dir_path, export_png,
   msk_sitk = None
   msk_spacing = None
   if has_manual_seg and assign_patient_mask_spacing == ASSIGN_PATIENT_MASK_SPACING:
-
     file =None
     if h5_data and patient_data is not None:
         file = patient_data['mask_file']
