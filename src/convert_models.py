@@ -64,16 +64,17 @@ def convert_step2_multi_gpu_model_2_single( config_yaml ):
         yaml_conf = yaml.load(f, Loader=yaml.FullLoader)
 
     data_folder_path = os.path.normpath(yaml_conf["io"]["path_to_data_folder"])
-    heartloc_data_folder_name = yaml_conf["io"]["heartloc_data_folder_name"]
+    heartseg_data_folder_name = yaml_conf["io"]["heartseg_data_folder_name"]
     weights_file_name = yaml_conf["model"]["weights_file_name"]
     model_weights_folder_name = yaml_conf["io"]["model_weights_folder_name"]
-    heartloc_data_path = os.path.join(data_folder_path, heartloc_data_folder_name)
-    model_weights_dir_path = os.path.join(heartloc_data_path, model_weights_folder_name)
+    heartseg_data_path = os.path.join(data_folder_path, heartseg_data_folder_name)
+    model_weights_dir_path = os.path.join(heartseg_data_path, model_weights_folder_name)
     weights_file = os.path.join(model_weights_dir_path, weights_file_name)
-    assert os.path.exists(weights_file)
+
 
 
     print("Loading saved model from {}".format(weights_file))
+    assert(os.path.exists(weights_file))
 
     extended = yaml_conf["model"]["extended"]
     down_steps = yaml_conf["model"]["down_steps"]
@@ -84,7 +85,7 @@ def convert_step2_multi_gpu_model_2_single( config_yaml ):
     This needs 2 gpus minimum to convert
     """
     input_shape = (training_size[2], training_size[1], training_size[0], 1)
-    model = heartseg_model.get_unet_3d(down_steps=down_steps, input_shape=input_shape, mgpu=2, ext=True)
+    model = heartseg_model.getUnet3d(down_steps=down_steps, input_shape=input_shape, mgpu=2, ext=True)
     model.load_weights(weights_file)
 
     single_gpu_model = model.layers[-2]
