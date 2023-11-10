@@ -103,11 +103,11 @@ def convert_step3_multi_gpu_model_2_single( config_yaml ):
         yaml_conf = yaml.load(f, Loader=yaml.FullLoader)
 
     data_folder_path = os.path.normpath(yaml_conf["io"]["path_to_data_folder"])
-    heartloc_data_folder_name = yaml_conf["io"]["heartloc_data_folder_name"]
+    cacs_data_path = os.path.join(data_folder_path, cacs_data_folder_name)
     weights_file_name = yaml_conf["model"]["weights_file_name"]
     model_weights_folder_name = yaml_conf["io"]["model_weights_folder_name"]
-    heartloc_data_path = os.path.join(data_folder_path, heartloc_data_folder_name)
-    model_weights_dir_path = os.path.join(heartloc_data_path, model_weights_folder_name)
+    cac_data_path = os.path.join(data_folder_path, cacs_data_path)
+    model_weights_dir_path = os.path.join(cac_data_path, model_weights_folder_name)
     weights_file = os.path.join(model_weights_dir_path, weights_file_name)
     assert os.path.exists(weights_file)
 
