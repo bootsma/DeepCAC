@@ -7,10 +7,10 @@ import argparse
 version=1
 def init_args():
     parser = argparse.ArgumentParser(description="convert_models.py \n"
-                                                 f" Version: {}\n".format(version)
+                                                 " Version: {}\n"
                                                  " Author: Gregory J. Bootsma, Copyright 2023\n"
                                                  " Description:\n\t"
-                                                 "Takes a config yaml associated with one of the Deep-CAC steps and converts the multi-gpu model to a single gpu model.")
+                                                 "Takes a config yaml associated with one of the Deep-CAC steps and converts the multi-gpu model to a single gpu model.".format(version))
 
     parser.add_argument('yaml_file', type=str, help="path to yaml config file ")
     parser.add_argument('step_number', type=int, help='The step number (1,2,or3) the model is associated with')
