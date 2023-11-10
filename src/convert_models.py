@@ -50,7 +50,7 @@ def convert_step1_multi_gpu_model_2_single( config_yaml ):
     model.load_weights(weights_file)
 
     single_gpu_model = model.layers[-2]
-    tmp_weights_file = weights_file[:weights_file.rfind('.')] + '_single_gpu.h5'
+    tmp_weights_file = weights_file[:weights_file.rfind('.')] + '_single_gpu.hdf5'
     print('Saving single gpu model weights as {}'.format(tmp_weights_file))
     single_gpu_model.save_weights(tmp_weights_file)
     print('Finished model `')
@@ -89,7 +89,7 @@ def convert_step2_multi_gpu_model_2_single( config_yaml ):
     model.load_weights(weights_file)
 
     single_gpu_model = model.layers[-2]
-    tmp_weights_file = weights_file[:weights_file.rfind('.')] + '_single_gpu.h5'
+    tmp_weights_file = weights_file[:weights_file.rfind('.')] + '_single_gpu.hdf5'
     print('Saving single gpu model weights as {}'.format(tmp_weights_file))
     single_gpu_model.save_weights(tmp_weights_file)
     print('Finished model 2')
@@ -136,7 +136,7 @@ def convert_step3_multi_gpu_model_2_single( config_yaml ):
     model.load_weights(weights_file)
 
     single_gpu_model = model.layers[-2]
-    tmp_weights_file = weights_file[:weights_file.rfind('.')] + '_single_gpu.h5'
+    tmp_weights_file = weights_file[:weights_file.rfind('.')] + '_single_gpu.hdf5'
     print('Saving single gpu model weights as {}'.format(tmp_weights_file))
     single_gpu_model.save_weights(tmp_weights_file)
 
