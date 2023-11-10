@@ -139,3 +139,13 @@ def convert_step3_multi_gpu_model_2_single( config_yaml ):
     single_gpu_model.save_weights(tmp_weights_file)
 
     print('Finished model 3')
+
+if __name__=="__main__":
+    args=init_args()
+    print('Converting model in {}'.format(args.yaml_file))
+    if args.step_number == 1:
+        convert_step1_multi_gpu_model_2_single(args.yaml_file)
+    if args.step_number == 2:
+        convert_step2_multi_gpu_model_2_single(args.yaml_file)
+    if args.step_number == 3:
+        convert_step3_multi_gpu_model_2_single(args.yaml_file)
