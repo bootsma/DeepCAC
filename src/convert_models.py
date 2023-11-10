@@ -130,7 +130,7 @@ def convert_step3_multi_gpu_model_2_single( config_yaml ):
     extended = True
     drop_out = 0.5
     down_steps = 3
-
+    lr = 0.0001
     model = cacseg_model.getUnet3d(down_steps=down_steps, input_shape=input_shape, pool_size=pool_size,
                                    conv_size=conv_size, initial_learning_rate=lr, mgpu=2,
                                    extended=extended, drop_out=drop_out, optimizer=optimizer)
