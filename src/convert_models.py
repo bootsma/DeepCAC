@@ -103,6 +103,7 @@ def convert_step3_multi_gpu_model_2_single( config_yaml ):
         yaml_conf = yaml.load(f, Loader=yaml.FullLoader)
 
     data_folder_path = os.path.normpath(yaml_conf["io"]["path_to_data_folder"])
+    cacs_data_folder_name = yaml_conf["io"]["cacs_data_folder_name"]
     cacs_data_path = os.path.join(data_folder_path, cacs_data_folder_name)
     weights_file_name = yaml_conf["model"]["weights_file_name"]
     model_weights_folder_name = yaml_conf["io"]["model_weights_folder_name"]
